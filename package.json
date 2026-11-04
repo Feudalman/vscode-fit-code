@@ -1,0 +1,37 @@
+{
+	"name": "center-editor",
+	"displayName": "Center Editor",
+	"description": "让编辑器正文像 JetBrains 那样居中：宽度 = 当前文件最长一行的宽度",
+	"version": "0.1.0",
+	"publisher": "local",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"extensionKind": [
+		"ui"
+	],
+	"categories": [
+		"Other"
+	],
+	"main": "./src/extension.js",
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "centerEditor.enable",
+				"title": "Center Editor: 启用（写入 VSCode 安装目录）"
+			},
+			{
+				"command": "centerEditor.disable",
+				"title": "Center Editor: 禁用（还原安装目录）"
+			},
+			{
+				"command": "centerEditor.status",
+				"title": "Center Editor: 显示状态"
+			}
+		]
+	}
+}
