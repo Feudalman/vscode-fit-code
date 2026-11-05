@@ -12,6 +12,10 @@
 - **布局层**（bundle 补丁）：Monaco 的 `computeLayout` 读取每个编辑器自己的 rulers 载体，把内缩量应用到 glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（−2×pad）；`EditorScrollbar._setLayout` 再把承载正文的容器**加宽 pad**（不动 left），使容器右缘铺回编辑器最右。
 - **注入方式**：`media/inject.js` 内联写进 `workbench.html`。内联脚本要求移除 `workbench.html` 的 CSP meta——原文以 base64 注释留在文件里，禁用时原样还原。
 
+**切文件不闪**：渲染层是事件驱动的（`onDidChangeModel` / 内容变化 / 布局变化），切 tab 时在绘制前就把 rulers 写对；
+最长行结果按文件 uri 缓存在 `localStorage`（行数 + 字符总数 + 首尾行采样做指纹），重开同一文件直接复用。
+宽度变化默认带 140ms CSS 过渡（`media/inject.js` 顶部的 `ANIMATE` / `ANIM_MS`），只作用于 `.editor-scrollable` 的 left/width，不影响鼠标命中。
+
 **只有正文/行号居中**：minimap 与滚动条保持贴右边缘（滚动条是正文容器的子元素，靠"容器只加宽不左移"实现）。
 
 **分屏时每个编辑器组按自己的宽度和内容独立计算**，互不干扰（rulers 是每编辑器独立的真实 option，天然无冲突）。

@@ -12,8 +12,14 @@
    滚动条由 bundle 第四处补丁（EditorScrollbar._setLayout 把承载正文的
    容器加宽 pad）钉在编辑器右边缘。
 
-   本脚本职责：对每个主编辑器，读自己的 model 全文算最长行视觉列数，
+   本脚本职责：对每个主编辑器，读自己的 model 算最长行视觉列数，
    按自己的面板宽算出 pad，写入 rulers。
+
+   两条与“闪”相关的设计：
+   1) 事件驱动：切文件/改内容/改布局时立刻重算，切 tab 时能赶在第一帧前写好，
+      不再依赖定时轮询（轮询只留作兜底）。
+   2) 结果缓存：按 model 对象缓存（同一次会话），并按文件 uri 持久化到
+      localStorage（跨会话）—— 命中时直接复用，不再扫全文。
 
    纯自适应：内容放得下就居中，放不下自动撑满 + 横向滚动。无阈值。
    --------------------------------------------------------------- */
@@ -24,7 +30,10 @@
 
 	var MIN_TEXT_WIDTH = 640; // 最小正文宽（原需求："有一个最小宽度"）
 	var PAD_RIGHT = 20;       // 正文右侧额外留白（原需求）
-	var colsCache = new Map(); // model → { ver, cols }
+	var ANIMATE = true;       // 宽度变化是否渐变（纯 CSS 过渡，不影响鼠标命中）
+	var ANIM_MS = 140;
+	var STORE_KEY = 'ce.cols.v1';
+	var STORE_MAX = 300;
 
 	// ---------- 列数计算（与扩展侧同逻辑：tab 展开、全角计 2、去尾随空白） ----------
 	function isWide(cp) {
@@ -36,30 +45,90 @@
 			(cp >= 0x20000 && cp <= 0x3fffd)
 		);
 	}
-	function maxVisualColumns(text, tabSize) {
-		var max = 0, col = 0, lastNonBlank = 0;
-		for (var i = 0; i < text.length; i++) {
-			var cp = text.codePointAt(i);
+	function lineVisualCols(line, tabSize) {
+		var col = 0, lastNonBlank = 0;
+		for (var i = 0; i < line.length; i++) {
+			var cp = line.codePointAt(i);
 			if (cp > 0xffff) i++;
-			if (cp === 10) { if (lastNonBlank > max) max = lastNonBlank; col = 0; lastNonBlank = 0; continue; }
-			if (cp === 13) continue;
 			if (cp === 9) { col += tabSize - (col % tabSize); continue; }
 			col += isWide(cp) ? 2 : 1;
 			if (cp !== 32) lastNonBlank = col;
 		}
-		if (lastNonBlank > max) max = lastNonBlank;
-		return max;
+		return lastNonBlank;
 	}
+
+	// 扫描全部行：先用 getLineLength 拿字符数上界（O(1)/行、不复制文本），
+	// 上界追不上当前最佳的行直接跳过 —— 长文件不用把全文读出来
+	function scanCols(model, tabSize) {
+		var n = model.getLineCount();
+		var perChar = Math.max(2, tabSize); // 单字符最多占的列数（tab 可能到 tabSize）
+		var best = 0;
+		for (var i = 1; i <= n; i++) {
+			var len;
+			try { len = model.getLineLength(i); } catch (e) { continue; }
+			if (len === 0 || len * perChar < best) continue;
+			var c = lineVisualCols(model.getLineContent(i), tabSize);
+			if (c > best) best = c;
+		}
+		return best;
+	}
+
+	// ---------- 缓存：内存（按 model） + 持久（按 uri） ----------
+	var mem = new Map();
+	var store = (function () {
+		try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+	})();
+	var saveTimer = 0;
+	function saveStore() {
+		clearTimeout(saveTimer);
+		saveTimer = setTimeout(function () {
+			try {
+				var keys = Object.keys(store);
+				if (keys.length > STORE_MAX) {
+					keys.sort(function (a, b) { return (store[a].t || 0) - (store[b].t || 0); });
+					keys.slice(0, keys.length - STORE_MAX).forEach(function (k) { delete store[k]; });
+				}
+				localStorage.setItem(STORE_KEY, JSON.stringify(store));
+			} catch (e) { /* 配额或隐私模式，忽略 */ }
+		}, 800);
+	}
+	function uriOf(model) {
+		try { return model.uri ? model.uri.toString() : null; } catch (e) { return null; }
+	}
+	// 指纹：行数 + 字符总数 + 首尾行采样。三项都对上才复用缓存（默认认为内容没变）
+	function fingerprint(model) {
+		var n = model.getLineCount();
+		var head = '', tail = '';
+		try { head = model.getLineContent(1).slice(0, 200); } catch (e) { /* ignore */ }
+		try { tail = model.getLineContent(n).slice(-200); } catch (e) { /* ignore */ }
+		return { lines: n, length: model.getValueLength(), head: head, tail: tail };
+	}
+
 	function colsFor(model) {
+		if (!model) return 0;
 		var ver = model.getVersionId();
-		var hit = colsCache.get(model);
+		var hit = mem.get(model);
 		if (hit && hit.ver === ver) return hit.cols;
-		var text = model.getValue();
+
 		var tabSize = 4;
-		try { var t = model.getOptions().tabSize; if (t > 0 && t <= 16) tabSize = t; } catch (e) {}
-		var cols = maxVisualColumns(text, tabSize);
-		if (colsCache.size > 50) colsCache.clear();
-		colsCache.set(model, { ver: ver, cols: cols });
+		try { var t = model.getOptions().tabSize; if (t > 0 && t <= 16) tabSize = t; } catch (e) { /* ignore */ }
+
+		var uri = uriOf(model);
+		var fp = fingerprint(model);
+		var rec = uri && store[uri];
+		if (rec && rec.lines === fp.lines && rec.length === fp.length && rec.head === fp.head && rec.tail === fp.tail) {
+			mem.set(model, { ver: ver, cols: rec.cols });
+			rec.t = Date.now();
+			saveStore();
+			return rec.cols;
+		}
+
+		var cols = scanCols(model, tabSize);
+		mem.set(model, { ver: ver, cols: cols });
+		if (uri) {
+			store[uri] = { lines: fp.lines, length: fp.length, head: fp.head, tail: fp.tail, cols: cols, t: Date.now() };
+			saveStore();
+		}
 		return cols;
 	}
 
@@ -113,16 +182,62 @@
 		try { var rr = ed.getOption(117); return rr && rr.length ? (rr[0].column || 0) : 0; } catch (e) { return 0; }
 	}
 
+	// ---------- 渐变：只在“内容宽度变了”的场合临时挂过渡类，避免缩放面板时拖泥带水 ----------
+	function injectStyle() {
+		if (document.getElementById('ce-style')) return;
+		var s = document.createElement('style');
+		s.id = 'ce-style';
+		s.textContent =
+			'.monaco-editor.ce-anim .editor-scrollable,\n' +
+			'.monaco-editor.ce-anim .margin-view-overlays,\n' +
+			'.monaco-editor.ce-anim .glyph-margin,\n' +
+			'.monaco-editor.ce-anim .minimap,\n' +
+			'.monaco-editor.ce-anim .decorationsOverviewRuler,\n' +
+			'.monaco-editor.ce-anim .scrollbar.vertical' +
+			' { transition: left ' + ANIM_MS + 'ms ease, width ' + ANIM_MS + 'ms ease; }';
+		try { document.head.appendChild(s); } catch (e) { /* ignore */ }
+	}
+
+	function applyPad(ed, animate) {
+		var pad = computePadFor(ed);
+		if (rulerPad(ed) === pad) return;
+		if (!ANIMATE || !animate) { setRuler(ed, pad); return; }
+		var dom;
+		try { dom = ed.getDomNode(); dom.classList.add('ce-anim'); } catch (e) { setRuler(ed, pad); return; }
+		setRuler(ed, pad);
+		setTimeout(function () { try { dom.classList.remove('ce-anim'); } catch (e) { /* ignore */ } }, ANIM_MS + 60);
+	}
+
+	// ---------- 事件驱动：切文件 / 改内容 / 改布局都立刻重算 ----------
+	var attached = new WeakSet();
+	function attach(ed) {
+		if (attached.has(ed)) return;
+		attached.add(ed);
+		var debounce = 0;
+		try {
+			// 切文件：同步重算（赶在下一帧绘制前写好 rulers，不会先闪成旧宽度），并做渐变
+			ed.onDidChangeModel(function () { applyPad(ed, true); });
+			// 改内容：防抖后再算，顺便写缓存
+			ed.onDidChangeModelContent(function () {
+				clearTimeout(debounce);
+				debounce = setTimeout(function () { applyPad(ed, false); }, 150);
+			});
+			// 面板尺寸变化（分屏、缩放窗口）：不要动画
+			ed.onDidLayoutChange(function () { applyPad(ed, false); });
+			// 字体 / wordWrap / tabSize 等配置变化
+			ed.onDidChangeConfiguration(function () { applyPad(ed, false); });
+		} catch (e) { /* ignore */ }
+	}
+
 	function tick() {
 		var eds = mainEditors();
 		for (var i = 0; i < eds.length; i++) {
-			var ed = eds[i];
-			var pad = computePadFor(ed);
-			var cur = rulerPad(ed);
-			if (cur !== pad) setRuler(ed, pad); // rulers 变化 → 选项重算 → 布局重算（pad 应用）
+			attach(eds[i]);
+			applyPad(eds[i], false);
 		}
 	}
 
-	setInterval(function () { tick(); }, 700);
+	injectStyle();
+	setInterval(tick, 1000); // 只做兜底 + 发现新编辑器
 	tick();
 })();
