@@ -16,6 +16,10 @@
 最长行结果按文件 uri 缓存在 `localStorage`（行数 + 字符总数 + 首尾行采样做指纹），重开同一文件直接复用。
 宽度变化默认带 140ms CSS 过渡（`media/inject.js` 顶部的 `ANIMATE` / `ANIM_MS`），只作用于 `.editor-scrollable` 的 left/width，不影响鼠标命中。
 
+**行号只显示光标行**：`editor.lineNumbers` 为 `on` 时，行号列只显示光标所在行（多光标则每处都显示）。
+行号列宽度保留（只改 `opacity`），所以光标移动时正文位置不会跟着跳。`off` 不受影响，`relative` / `interval` 保持原生行为。
+开关是 `media/inject.js` 顶部的 `LINE_NUM_ONLY_CURSOR`。
+
 **只有正文/行号居中**：minimap 与滚动条保持贴右边缘（滚动条是正文容器的子元素，靠"容器只加宽不左移"实现）。
 
 **分屏时每个编辑器组按自己的宽度和内容独立计算**，互不干扰（rulers 是每编辑器独立的真实 option，天然无冲突）。

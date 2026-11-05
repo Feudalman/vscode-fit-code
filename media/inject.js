@@ -34,6 +34,8 @@
 	var ANIM_MS = 140;
 	var STORE_KEY = 'ce.cols.v1';
 	var STORE_MAX = 300;
+	var LINE_NUM_ONLY_CURSOR = true; // 只显示光标所在行的行号（行号列宽度保留，不改布局）
+	var LN_RENDER_ON = 1;            // Monaco RenderLineNumbersType.On
 
 	// ---------- 列数计算（与扩展侧同逻辑：tab 展开、全角计 2、去尾随空白） ----------
 	function isWide(cp) {
@@ -216,17 +218,60 @@
 		var debounce = 0;
 		try {
 			// 切文件：同步重算（赶在下一帧绘制前写好 rulers，不会先闪成旧宽度），并做渐变
-			ed.onDidChangeModel(function () { applyPad(ed, true); });
+			ed.onDidChangeModel(function () { applyPad(ed, true); scheduleLineNumbers(ed); });
 			// 改内容：防抖后再算，顺便写缓存
 			ed.onDidChangeModelContent(function () {
 				clearTimeout(debounce);
 				debounce = setTimeout(function () { applyPad(ed, false); }, 150);
 			});
 			// 面板尺寸变化（分屏、缩放窗口）：不要动画
-			ed.onDidLayoutChange(function () { applyPad(ed, false); });
+			ed.onDidLayoutChange(function () { applyPad(ed, false); scheduleLineNumbers(ed); });
 			// 字体 / wordWrap / tabSize 等配置变化
 			ed.onDidChangeConfiguration(function () { applyPad(ed, false); });
+			// 光标移动 / 滚动 / 换文件 / 改内容 / 布局变化 → 重算“哪些行号可见”
+			ed.onDidChangeCursorSelection(function () { scheduleLineNumbers(ed); });
+			ed.onDidScrollChange(function () { scheduleLineNumbers(ed); });
 		} catch (e) { /* ignore */ }
+	}
+
+	// ---------- 行号：只显示光标所在行（多光标则全部显示） ----------
+	// 只改 opacity，不动 gutter 宽度 → 正文位置稳定，不会跟着光标左右跳。
+	// 仅在 editor.lineNumbers === 'on' 时接管；off/relative/interval 保持原生行为。
+	// 'on' 模式下每个 .line-numbers 元素的文本就是行号本身，直接拿来判定，
+	// 不依赖 top/transform 之类的定位实现（新版 Monaco 已经不用 style.top 了）。
+	function lineNumbersFor(ed) {
+		if (!LINE_NUM_ONLY_CURSOR) return;
+		var renderType = 0;
+		try { renderType = ed.getOption(76).renderType; } catch (e) { return; }
+		if (renderType !== LN_RENDER_ON) return;
+
+		var els;
+		try {
+			var overlay = ed.getDomNode().querySelector('.margin-view-overlays');
+			if (!overlay) return;
+			els = overlay.querySelectorAll('.line-numbers');
+		} catch (e) { return; }
+		if (!els.length) return;
+
+		var cursors = new Set();
+		try { ed.getSelections().forEach(function (sel) { cursors.add(sel.positionLineNumber); }); } catch (e) { return; }
+
+		for (var i = 0; i < els.length; i++) {
+			var el = els[i];
+			var ln = parseInt((el.textContent || '').trim(), 10);
+			var want = (ln === ln && cursors.has(ln)) ? '' : '0'; // NaN（非纯数字）时保持可见
+			if (el.style.opacity !== want) el.style.opacity = want;
+		}
+	}
+
+	var lnQueue = new WeakSet();
+	function scheduleLineNumbers(ed) {
+		if (lnQueue.has(ed)) return;
+		lnQueue.add(ed);
+		requestAnimationFrame(function () {
+			lnQueue.delete(ed);
+			lineNumbersFor(ed);
+		});
 	}
 
 	function tick() {
@@ -234,6 +279,7 @@
 		for (var i = 0; i < eds.length; i++) {
 			attach(eds[i]);
 			applyPad(eds[i], false);
+			scheduleLineNumbers(eds[i]);
 		}
 	}
 
