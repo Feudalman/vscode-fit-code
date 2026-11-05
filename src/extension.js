@@ -14,17 +14,28 @@ const OTHER_SESSION = /<!-- !! VSCODE-CUSTOM-CSS-SESSION-ID [\w-]+ !! -->\n*/g;
 const BUNDLE_ANCHOR = /_createConfiguration\((\w+),(\w+),(\w+),(\w+)\)\{return new ([\w$]+)\(\1,\2,\3,this\._domElement,\4\)\}/;
 const BUNDLE_MARKER = '__ceEditors';
 const BUNDLE_FLAG = 'window.__ceBundlePatched=1;';
+// 历史方案（已废弃）：把注入脚本作为外部 <script> 从 bundle 里加载——
+// CSP 带 require-trusted-types-for 'script'，字符串赋给 script.src 会被 TrustedScriptURL 拦掉。
+// 现在注入仍走 workbench.html 内联（因此 html 必须去掉 CSP meta，原文以 base64 注释留档）。
+const LEGACY_LOADER = 'var __ceLoader=document.createElement';
 // 兜底锚点：updateOptions 一定会被调用（配置变化 / 切语言等）
 const BUNDLE_ANCHOR2 = /updateOptions\((\w+)\)\{this\._configuration\.updateOptions\(\1\|\|\{\}\)\}/;
-// 第三处（v5 分屏自适应·终版）：门控(__ceGate) + 读取 window.__ceChannel（inject.js 发布），
+// 第三处：门控(__ceGate) + 读本编辑器自己的 rulers（EditorOption 117，inject.js 写入），
 // 返回值里按【本编辑器自己的宽度】独立计算内缩量 __ceP 并应用到
-// glyphMargin/行号/装饰/contentLeft（+__ceP）、contentWidth（-2*__ceP）、minimapLeft（-__ceP）。
-// .monaco-editor 元素保持满宽（无外缝），行号跟随正文，分屏时各组独立居中。
+// glyphMargin/行号/装饰/contentLeft（+__ceP）、contentWidth（-2*__ceP）。minimap 保持原生位置。
 const BUNDLE_ANCHOR3 = /computeLayout\((\w+),(\w+)\)\{let (\w+)=\2\.outerWidth\|0/;
 const BUNDLE_ANCHOR3R = /\{width:(\w+),height:(\w+),glyphMarginLeft:(\w+),glyphMarginWidth:(\w+),glyphMarginDecorationLaneCount:([\w$.]+),lineNumbersLeft:(\w+),lineNumbersWidth:(\w+),decorationsLeft:(\w+),decorationsWidth:(\w+),contentLeft:(\w+),contentWidth:(\w+),minimap:(\w+)/;
 const BUNDLE_MARKER3 = '__ceGate';
-// 旧版补丁痕迹（v2/v3/v4）：检测到则从备份还原后按 v5 重打
+// 第四处（滚动条/minimap 钉右）：EditorScrollbar 的容器就是【正文所在的容器】——
+// lines-content、decorationsOverviewRuler、竖滚动条都是它的子元素，正文位置 = 它的 left。
+// 补丁3 缩小 contentWidth 后，这个容器右边缘左移 pad → 滚动条跟着正文居中。
+// 所以：left 绝对不能动（动它正文会一起左移），只把 width 加 pad，让右边缘铺回编辑器最右。
+const BUNDLE_ANCHOR4 = /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
+const BUNDLE_MARKER4 = '__ceSb';
+// 历史补丁痕迹（旧版在返回值上做内缩）：检测到则从备份还原后重打
 const BUNDLE_LEGACY = /contentLeft:\(__ceCE\?|__ceCE2|__ceCE4/;
+// 旧补丁（minimap 跟随内容左移 / 滚动条未钉右缘）→ 也从备份还原后按当前版本重打
+const BUNDLE_LEGACY_V5 = /minimapLeft=l\.minimapLeft-__ceP/;
 const bundlePathFor = (htmlPath) =>
 	path.resolve(path.dirname(htmlPath), '..', '..', '..', 'workbench', 'workbench.desktop.main.js');
 
@@ -138,9 +149,9 @@ async function patchBundle(htmlPath) {
 	if (!fs.existsSync(bundle)) return { ok: false, error: '找不到 workbench.desktop.main.js' };
 	let src = await fs.promises.readFile(bundle, 'utf8');
 	const bak = bundle + '.center-editor.bak';
-	// v2 → v3 升级：旧补丁在返回值上做内缩，与 v3 头收缩叠加会双重收缩 → 从备份还原后按 v3 重打
-	if (BUNDLE_LEGACY.test(src)) {
-		if (!fs.existsSync(bak)) return { ok: false, error: '检测到旧版(v2/v3)补丁但没有备份，无法安全升级，请手动还原 bundle' };
+	// 检测到任何旧版补丁痕迹 → 先从备份还原成干净体再重打，避免新旧补丁叠加
+	if (BUNDLE_LEGACY.test(src) || BUNDLE_LEGACY_V5.test(src) || src.includes(LEGACY_LOADER)) {
+		if (!fs.existsSync(bak)) return { ok: false, error: '检测到旧版补丁但没有备份，无法安全升级，请手动还原 bundle' };
 		src = await fs.promises.readFile(bak, 'utf8');
 	}
 	if (!fs.existsSync(bak)) await fs.promises.writeFile(bak, src, 'utf8');
@@ -185,9 +196,27 @@ async function patchBundle(htmlPath) {
 			BUNDLE_ANCHOR3R,
 			'{width:$1,height:$2,glyphMarginLeft:$3+__ceP,glyphMarginWidth:$4,glyphMarginDecorationLaneCount:$5,' +
 				'lineNumbersLeft:$6+__ceP,lineNumbersWidth:$7,decorationsLeft:$8+__ceP,decorationsWidth:$9,' +
-				'contentLeft:$10+__ceP,contentWidth:Math.max(1,$11-2*__ceP),' +
-				'minimap:(function(l){if(!__ceP)return l;var m={},k;for(k in l)m[k]=l[k];' +
-				'if(l.renderMinimap!==0&&l.minimapLeft>0)m.minimapLeft=l.minimapLeft-__ceP;return m})($12)'
+				// minimap 不跟内容左移：右侧 UI 全部钉在右边缘，只有正文/行号居中
+				'contentLeft:$10+__ceP,contentWidth:Math.max(1,$11-2*__ceP),minimap:$12'
+		);
+		changed = true;
+	}
+	if (!src.includes(BUNDLE_MARKER4)) {
+		const hits4 = src.match(new RegExp(BUNDLE_ANCHOR4.source, 'g')) || [];
+		if (hits4.length !== 1) return { ok: false, error: `锚点4 匹配 ${hits4.length} 处` };
+		src = src.replace(
+			BUNDLE_ANCHOR4,
+			'_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);' +
+				// 与补丁3 同一门控：wordWrap=off 且宽度≥400 时才认 rulers 里的内缩量
+				'var __ceW=$1.get(156);__ceW=__ceW==="inherit"?$1.get(155):__ceW;' +
+				'__ceW=__ceW==="inherit"?$1.get(151):__ceW;' +
+				'var __ceK=$1.get(117)||[];' +
+				'var __ceSb=(__ceW==="off"&&$2.width>=400&&__ceK.length&&typeof __ceK[0].column==="number")?__ceK[0].column:0;' +
+				// 左边界不动：正文位置 = 容器 left，动它就等于把正文一起挪走（曾经踩过）
+				'this.scrollbarDomNode.setLeft($2.contentLeft),' +
+				'$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ceSb+$2.minimap.minimapWidth)' +
+				':this.scrollbarDomNode.setWidth($2.contentWidth+__ceSb),' +
+				'this.scrollbarDomNode.setHeight($2.height)}'
 		);
 		changed = true;
 	}
@@ -198,6 +227,8 @@ async function patchBundle(htmlPath) {
 async function unpatchBundle(htmlPath) {
 	const bundle = bundlePathFor(htmlPath);
 	const bak = bundle + '.center-editor.bak';
+	// 清掉历史方案遗留的外部注入脚本，再还原 bundle
+	try { fs.unlinkSync(path.join(path.dirname(bundle), 'center-editor.inject.js')); } catch (e) { /* ignore */ }
 	if (fs.existsSync(bak)) {
 		await fs.promises.copyFile(bak, bundle);
 		await fs.promises.unlink(bak);
@@ -215,7 +246,6 @@ async function cmdEnable() {
 	let html = await fs.promises.readFile(htmlPath, 'utf8');
 	const bak = backupPathFor(htmlPath);
 	const cspInFile = html.match(CSP_META);
-
 	const recoveredCsp = cspInFile ? cspInFile[0] : recoverCsp(htmlPath);
 
 	// 干净状态下先留一份完整原文，禁用时原样还原
@@ -236,13 +266,14 @@ async function cmdEnable() {
 		html = html.replace(OTHER_BLOCK, '').replace(OTHER_SESSION, '');
 	}
 
-	// 内联 <script> 需要移除 CSP；把原文存进注释里，便于撤销
-	const csp = recoveredCsp;
-	if (cspInFile) html = html.replace(cspInFile[0], '');
+	// 内联 <script> 必须去掉 CSP。⚠️ 顺序：先 stripPatch（它会把注释里的 meta 还原回正文），
+	// 再取 CSP、再用全局正则把正文里所有 meta 删干净——否则残留的 meta 会静默拦掉注入脚本。
+	const cspAfter = html.match(CSP_META);
+	const csp = cspAfter ? cspAfter[0] : recoveredCsp;
+	html = html.replace(new RegExp(CSP_META.source, 'g'), '');
 	const savedCsp = csp ? `<!-- !! CENTER-EDITOR-CSP ${Buffer.from(csp, 'utf8').toString('base64')} !! -->\n` : '';
 
-	const block =
-		`${START}\n<script>${asset('inject.js')}</script>\n${END}\n</head>`;
+	const block = `${savedCsp}${START}\n<script>${asset('inject.js')}</script>\n${END}\n</head>`;
 	html = html.replace('</head>', block);
 
 	const bp = await patchBundle(htmlPath);
@@ -250,14 +281,15 @@ async function cmdEnable() {
 		vscode.window.showErrorMessage('Center Editor: ' + bp.error);
 		return;
 	}
-
 	try {
 		await fs.promises.writeFile(htmlPath, html, 'utf8');
 	} catch (e) {
 		vscode.window.showErrorMessage('Center Editor: 写入失败（权限不足？）' + e.message);
 		return;
 	}
-	await vscode.workspace.getConfiguration('centerEditor').update('enabled', true, vscode.ConfigurationTarget.Global);
+	try {
+		await vscode.workspace.getConfiguration('centerEditor').update('enabled', true, vscode.ConfigurationTarget.Global);
+	} catch (e) { /* ignore */ }
 	const msg = 'Center Editor 已写入，需要重载窗口生效。' + (removedOther ? '（已清除之前 Custom CSS 的注入）' : '');
 	const pick = await vscode.window.showInformationMessage(msg, '重载窗口');
 	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
@@ -266,21 +298,19 @@ async function cmdEnable() {
 async function cmdDisable() {
 	const htmlPath = locateWorkbenchHtml();
 	if (!htmlPath) return;
+	// 还原 html（万一还是旧版留下的内联注入块）
 	const bak = backupPathFor(htmlPath);
 	if (fs.existsSync(bak)) {
 		await fs.promises.copyFile(bak, htmlPath);
 		await fs.promises.unlink(bak);
 	} else {
 		const html = await fs.promises.readFile(htmlPath, 'utf8');
-		const next = stripPatch(html);
-		if (next === html) {
-			vscode.window.showInformationMessage('Center Editor 未处于启用状态。');
-			return;
-		}
-		await fs.promises.writeFile(htmlPath, next, 'utf8');
+		if (html.includes(START)) await fs.promises.writeFile(htmlPath, stripPatch(html), 'utf8');
 	}
 	await unpatchBundle(htmlPath);
-	await vscode.workspace.getConfiguration('centerEditor').update('enabled', false, vscode.ConfigurationTarget.Global);
+	try {
+		await vscode.workspace.getConfiguration('centerEditor').update('enabled', false, vscode.ConfigurationTarget.Global);
+	} catch (e) { /* ignore */ }
 	const pick = await vscode.window.showInformationMessage('Center Editor 已还原，需重载窗口。', '重载窗口');
 	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
 }
@@ -289,10 +319,14 @@ async function cmdStatus() {
 	const htmlPath = locateWorkbenchHtml();
 	const html = htmlPath ? await fs.promises.readFile(htmlPath, 'utf8') : '';
 	const cols = vscode.window.activeTextEditor ? columnsOfEditor(vscode.window.activeTextEditor) : 0;
+	const bundle = htmlPath ? bundlePathFor(htmlPath) : '';
+	const bundleSrc = bundle && fs.existsSync(bundle) ? fs.readFileSync(bundle, 'utf8') : '';
 	const lines = [
-		`已写入 html: ${html.includes(START) ? '是' : '否'}`,
-		`已写入 bundle: ${htmlPath && fs.existsSync(bundlePathFor(htmlPath)) && fs.readFileSync(bundlePathFor(htmlPath), 'utf8').includes(BUNDLE_MARKER) ? '是' : '否'}`,
-		`备份: ${htmlPath && fs.existsSync(backupPathFor(htmlPath)) ? '有' : '无'}`,
+		`bundle 已打补丁: ${bundleSrc.includes(BUNDLE_MARKER) ? '是' : '否'}`,
+		`滚动条/minimap 钉右: ${bundleSrc.includes(BUNDLE_MARKER4) ? '是' : '否'}`,
+		`html 内联注入块: ${html.includes(START) ? '有' : '无'}`,
+		`html 里残留 CSP meta: ${(html.match(new RegExp(CSP_META.source, 'g')) || []).length}`,
+		`bundle 备份: ${bundle && fs.existsSync(bundle + '.center-editor.bak') ? '有' : '无'}`,
 		`当前文件最长行: ${cols || '-'} 列`,
 		`workbench.html: ${htmlPath || '未找到'}`,
 	];

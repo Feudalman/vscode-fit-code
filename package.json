@@ -2,7 +2,7 @@
 	"name": "center-editor",
 	"displayName": "Center Editor",
 	"description": "让编辑器正文像 JetBrains 那样居中：宽度 = 当前文件最长一行的宽度",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"publisher": "local",
 	"license": "MIT",
 	"engines": {
@@ -19,6 +19,16 @@
 		"onStartupFinished"
 	],
 	"contributes": {
+		"configuration": {
+			"title": "Center Editor",
+			"properties": {
+				"centerEditor.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Center Editor 是否已写入 VSCode 安装目录。由“启用/禁用”命令自动维护，勿手改（写它只是为了状态可见）。"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "centerEditor.enable",

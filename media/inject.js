@@ -1,12 +1,16 @@
 /* ---------------------------------------------------------------
-   Center Editor v5.1 —— 渲染层（每编辑器独立自适应居中·rulers 载体）
+   Center Editor —— 渲染层（每编辑器独立自适应居中·rulers 载体）
 
    协议：bundle 补丁的 computeLayout 从【本编辑器自己的 rulers 选项】
    （EditorOption 117，inject 通过 updateOptions({rulers:[{column:pad,
    color:'transparent'}]}) 写入）读取内缩量，应用到
-   glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（-2*pad）、
-   minimapLeft（-pad）。rulers 是每编辑器独立的真实 option → 分屏互不干扰；
+   glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（-2*pad）。
+   rulers 是每编辑器独立的真实 option → 分屏互不干扰；
    改 rulers 本身就会触发布局重算（无需额外触发器）；透明色不可见。
+
+   minimap 与滚动条【不跟着内容走】：minimap 保持原生位置；
+   滚动条由 bundle 第四处补丁（EditorScrollbar._setLayout 把承载正文的
+   容器加宽 pad）钉在编辑器右边缘。
 
    本脚本职责：对每个主编辑器，读自己的 model 全文算最长行视觉列数，
    按自己的面板宽算出 pad，写入 rulers。

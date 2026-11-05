@@ -37,10 +37,14 @@ node --check /tmp/fitcode/clean.mjs
 
 ### 3. 生成补丁后的 bundle（E2E 的注入体）
 
+> 补丁 1~4 与扩展 `启用` 时打的完全一致；注入脚本仍由 E2E 单独注入（不走 html）。
+
 ```bash
 node test/patch-bundle.js /tmp/fitcode/clean.mjs /tmp/fitcode/patched-body.js
 node --check /tmp/fitcode/patched-body.js
 ```
+
+> 输入必须是**未打补丁**的干净 bundle（补丁 3/4 的锚点在已补丁体上已失配，会直接报错退出）。
 
 ### 4. 启动隔离实例
 
@@ -67,18 +71,25 @@ touch /tmp/fitcode/AUTO_SPLIT
 ## 运行
 
 ```bash
-node test/e2e-v5.mjs        # 完整 E2E：注入补丁体 + inject + 断言 8 项
+node test/e2e.mjs        # 完整 E2E：注入补丁体 + inject + 断言 12 项（需先按上文起实例）
 node test/measure.mjs 9337  # 现场诊断：量任意带调试口实例的各层几何
 ```
 
 ## 断言内容
 
+内缩量定义为 `padL = contentLeft − gutter`（原生 gutter = glyphMargin+lineNumbers+decorations），
+`padR = (width − minimapWidth) − (contentLeft + contentWidth)`；**居中 ⇔ padL == padR**（与面板宽无关，不写死像素）。
+
 | 场景 | 预期 |
 |---|---|
-| 短文件（10 列，面板 1023） | 居中，内缩 ≈124px（minWidth 640 抬升目标宽） |
-| 中文件（99 列，792px） | 放得下 → 居中，小幅内缩 |
-| 长文件（1886 列） | 不放 → 撑满 + 横向滚动（contentLeft = 原生 gutter） |
-| 分屏 | 每组按自己的宽度与内容**独立**计算，互不影响 |
+| 短文件（10 列） | 居中：padL == padR > 0；**滚动条右缘距面板右缘 = 0** |
+| 中文件（99 列，放得下） | 居中：padL == padR > 0；滚动条仍钉右缘 |
+| 长文件（1886 列） | 放不下 → 撑满：padL == padR == 0；滚动条仍钉右缘 |
+| 分屏左组（长） | 撑满（padL == 0） |
+| 分屏右组（短） | 居中，且与左组内缩量不同（各组独立计算） |
+| 分屏两组 | 各自滚动条钉在自家右缘；minimap 右缘 = `width − verticalScrollbarWidth`（不跟内容左移） |
+
+> 滚动条断言是关键回归项：只做 patch3（不钉右）时 `scrollbarRightGap` 会等于内缩量（实测 636/555px），看起来就是"滚动条跟着正文居中"。
 
 ## 踩过的坑（勿重复）
 
@@ -89,3 +100,13 @@ node test/measure.mjs 9337  # 现场诊断：量任意带调试口实例的各�
 4. **状态栏信道不可靠**：扩展宿主的状态栏项在部分环境同步不到渲染器——已废除，列数计算移入渲染层
 5. **VSCode 不吃 `--window-size`**：窗口尺寸靠预置 profile 的 `storage.json` 的 `windowsState`
 6. **合成键盘事件不触发 VSCode 命令**：需要执行 workbench 命令时走扩展 API（如 AUTO_SPLIT 监视器），鼠标事件可用
+7. **滚动条位置不在 `computeLayout` 里**：竖滚动条是 `right:0` 贴在 `EditorScrollbar` 容器上的，容器的 `left/width` 由 `_setLayout` 从 layoutInfo 取——`contentLeft/contentWidth` 一内缩，右边就会跟着缩（表现为滚动条居中）
+8. **`contentWidth` 语义含 vsb**：原生 `contentWidth = width − gutter − minimapWidth`，正文区右边界是 `width − minimapWidth`，不是 `width − verticalScrollbarWidth`；拿右边减去 vsb 算对称会恒定偏 14px，断言全至
+9. **`Set.forEach` 第二参是值不是下标**：`window.__ceEditors` 是 Set，`forEach((ed,i)=>…)` 里的 `i` 其实是 editor 对象；把它回传给 CDP 会报 `Object reference chain is too long`
+10. **AUTO_SPLIT 标记会被扩展消费后删除**：分屏等待循环里要每轮重写标记（`Page.reload` 后分屏可能回到 1 组）
+11. **正文和滚动条住在同一个容器里**：`EditorScrollbar._setLayout` 里的 `scrollbarDomNode` 就是 `.monaco-scrollable-element.editor-scrollable`——`lines-content`（正文）、`decorationsOverviewRuler`、竖滚动条都是它的子元素，**正文位置 = 该容器的 left**。所以只能"宽度加 pad"让右缘铺到最右，**绝不能改 left**（改了正文会一起左移，表现为"完全不居中"）。
+12. **E2E 覆盖不到注入链路**：E2E 用 `Page.addScriptToEvaluateOnNewDocument` 注入 inject.js、用 CDP 替换 bundle，全程不读磁盘上的 `workbench.html`。所以"CSP 拦掉内联脚本"这类问题 E2E 永远绿。真机自查：`window.__ceLoaded === true` 且 `document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]').length === 0`。
+13. **`stripPatch` 会把 CSP 从注释还原回正文**：`cmdEnable` 若在 `stripPatch` 之前取 `cspInFile`，还原出来的 meta 就永远删不掉 → CSP 静默拦掉内联注入脚本（无报错、无日志）。正确顺序：先 `stripPatch`，再取 CSP，再用全局正则删掉所有 meta，最后写 `CSP 注释 + 注入块`。
+14. **别动态建 `<script>` 来加载注入脚本**：CSP 带 `require-trusted-types-for 'script'`，`script.src = 字符串` 会报 `This document requires 'TrustedScriptURL' assignment`，且 `trusted-types` 白名单里没有我们。注入老老实实内联进 html。
+15. **先看窗口尺寸再怀疑补丁**：补丁门控要求编辑器面板 ≥ 400px。窗口被缩成 143×145 这种小方块时，看 DOM 一切正常、layoutInfo 里 pad 也在，但屏幕上看就是"完全没生效"。排查前先 `Quartz.CGWindowListCopyWindowInfo` 或 System Events 确认窗口尺寸。
+16. **CDP 量到的窗口 ≠ 你眼前的窗口**：多窗口/多屏时 `json/list` 里的 target 可能是隐藏窗口。真要判断"用户看到的效果"，用同一个 target 的 `Page.captureScreenshot`，或者直接量 `.view-lines` / `.editor-scrollable` 的 `getBoundingClientRect()`。
