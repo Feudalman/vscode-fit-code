@@ -25,7 +25,50 @@
 				"centerEditor.enabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "Center Editor 是否已写入 VSCode 安装目录。由“启用/禁用”命令自动维护，勿手改（写它只是为了状态可见）。"
+					"description": "Center Editor 是否已写入 VSCode 安装目录。由「启用/禁用」命令自动维护，勿手改。"
+				},
+				"centerEditor.center": {
+					"type": "boolean",
+					"default": true,
+					"description": "正文居中。关闭即回归原生布局（1~2 秒内生效，无需重载窗口）。"
+				},
+				"centerEditor.minTextWidth": {
+					"type": "number",
+					"default": 640,
+					"minimum": 0,
+					"maximum": 4000,
+					"description": "正文最小宽度（像素）。"
+				},
+				"centerEditor.paddingRight": {
+					"type": "number",
+					"default": 20,
+					"minimum": 0,
+					"maximum": 400,
+					"description": "正文右侧额外留白（像素）。"
+				},
+				"centerEditor.animate": {
+					"type": "boolean",
+					"default": true,
+					"description": "切换文件/内容变化时宽度渐变。"
+				},
+				"centerEditor.animateDuration": {
+					"type": "number",
+					"default": 140,
+					"minimum": 0,
+					"maximum": 1000,
+					"description": "宽度渐变时长（毫秒），0 表示不渐变。"
+				},
+				"centerEditor.lineNumbersOnlyAtCursor": {
+					"type": "boolean",
+					"default": true,
+					"description": "行号只显示光标所在行（多光标则每处都显示）。关闭即恢复原生行号。"
+				},
+				"centerEditor.cacheSize": {
+					"type": "number",
+					"default": 300,
+					"minimum": 10,
+					"maximum": 5000,
+					"description": "每文件宽度缓存的条数上限。"
 				}
 			}
 		},

@@ -18,7 +18,6 @@
 
 **行号只显示光标行**：`editor.lineNumbers` 为 `on` 时，行号列只显示光标所在行（多光标则每处都显示）。
 行号列宽度保留（只改 `opacity`），所以光标移动时正文位置不会跟着跳。`off` 不受影响，`relative` / `interval` 保持原生行为。
-开关是 `media/inject.js` 顶部的 `LINE_NUM_ONLY_CURSOR`。
 
 **只有正文/行号居中**：minimap 与滚动条保持贴右边缘（滚动条是正文容器的子元素，靠"容器只加宽不左移"实现）。
 
@@ -38,6 +37,22 @@
 **停用**：命令面板执行 **`Center Editor: 禁用`** → 重载窗口（从自动备份原样还原）。
 **状态**：命令面板执行 **`Center Editor: 状态`**。
 **升级**：换上新版扩展目录后，直接执行一次 **`Center Editor: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
+
+## 设置
+
+全部开关都在设置里（改完 1~2 秒生效，不需要重跑「启用」或重载窗口）：
+
+| 设置 | 默认 | 作用 |
+|---|---|---|
+| `centerEditor.center` | `true` | 正文居中。关掉即回归原生布局 |
+| `centerEditor.minTextWidth` | `640` | 正文最小宽度（px） |
+| `centerEditor.paddingRight` | `20` | 正文右侧额外留白（px） |
+| `centerEditor.animate` | `true` | 切换文件/内容变化时宽度渐变 |
+| `centerEditor.animateDuration` | `140` | 渐变时长（ms），0 = 不渐变 |
+| `centerEditor.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标行 |
+| `centerEditor.cacheSize` | `300` | 每文件宽度缓存条数上限 |
+
+原理：渲染层拿不到 VSCode 的设置 API，所以扩展把上述设置写进 `out/vs/workbench/center-editor.config.json`（启用/禁用时会创建/删除），渲染层每 2 秒、以及窗口聚焦时拉一次。手改这个 json 只写部分字段时，其余字段沿用当前值。
 
 ## 已知边界
 

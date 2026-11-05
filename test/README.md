@@ -110,3 +110,4 @@ node test/measure.mjs 9337  # 现场诊断：量任意带调试口实例的各�
 14. **别动态建 `<script>` 来加载注入脚本**：CSP 带 `require-trusted-types-for 'script'`，`script.src = 字符串` 会报 `This document requires 'TrustedScriptURL' assignment`，且 `trusted-types` 白名单里没有我们。注入老老实实内联进 html。
 15. **先看窗口尺寸再怀疑补丁**：补丁门控要求编辑器面板 ≥ 400px。窗口被缩成 143×145 这种小方块时，看 DOM 一切正常、layoutInfo 里 pad 也在，但屏幕上看就是"完全没生效"。排查前先 `Quartz.CGWindowListCopyWindowInfo` 或 System Events 确认窗口尺寸。
 16. **CDP 量到的窗口 ≠ 你眼前的窗口**：多窗口/多屏时 `json/list` 里的 target 可能是隐藏窗口。真要判断"用户看到的效果"，用同一个 target 的 `Page.captureScreenshot`，或者直接量 `.view-lines` / `.editor-scrollable` 的 `getBoundingClientRect()`。
+17. **设置通道不经过 E2E**：渲染层靠轮询 `out/vs/workbench/center-editor.config.json` 拿配置（扩展在启用/设置变化时写）。E2E 直接用 CDP 注入脚本，量的是几何，不会验证这个文件通道。改配置相关逻辑后要手动验：改一项设置 → 2 秒内看到效果。

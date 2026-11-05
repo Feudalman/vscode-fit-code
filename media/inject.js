@@ -28,14 +28,70 @@
 	if (window.__ceLoaded) return;
 	window.__ceLoaded = true;
 
-	var MIN_TEXT_WIDTH = 640; // 最小正文宽（原需求："有一个最小宽度"）
-	var PAD_RIGHT = 20;       // 正文右侧额外留白（原需求）
-	var ANIMATE = true;       // 宽度变化是否渐变（纯 CSS 过渡，不影响鼠标命中）
-	var ANIM_MS = 140;
+	// ---------- 配置 ----------
+	// 渲染层拿不到 VSCode 的设置 API，所以走一条文件通道：扩展把 centerEditor.* 写到
+	// bundle 旁边的 center-editor.config.json，这里定时（以及窗口聚焦时）拉取，准实时生效。
+	var CFG_REL = '../../../workbench/center-editor.config.json'; // 相对 workbench.html
+	var CFG_POLL_MS = 2000;
+	var DEFAULTS = {
+		center: true,               // 是否居中（false = 回归原生布局）
+		minTextWidth: 640,          // 最小正文宽
+		paddingRight: 20,           // 正文右侧额外留白
+		animate: true,              // 宽度变化是否渐变（纯 CSS 过渡，不影响鼠标命中）
+		animateDuration: 140,       // 渐变时长（ms）
+		lineNumbersOnlyAtCursor: true, // 只显示光标行的行号（行号列宽度保留，不改布局）
+		cacheSize: 300              // 每文件宽度缓存条数上限
+	};
+	var cfg = {};
+	for (var dk in DEFAULTS) cfg[dk] = DEFAULTS[dk];
+
 	var STORE_KEY = 'ce.cols.v1';
-	var STORE_MAX = 300;
-	var LINE_NUM_ONLY_CURSOR = true; // 只显示光标所在行的行号（行号列宽度保留，不改布局）
 	var LN_RENDER_ON = 1;            // Monaco RenderLineNumbersType.On
+
+	function clampNum(v, d, lo, hi) {
+		var n = typeof v === 'number' && isFinite(v) ? v : d;
+		return Math.min(hi, Math.max(lo, n));
+	}
+	function applyConfig(j) {
+		// 缺省字段沿用当前值（手改 json 只写一项时不会把其它设置重置）
+		var next = {
+			center: typeof j.center === 'boolean' ? j.center : cfg.center,
+			minTextWidth: clampNum(j.minTextWidth, cfg.minTextWidth, 0, 4000),
+			paddingRight: clampNum(j.paddingRight, cfg.paddingRight, 0, 400),
+			animate: typeof j.animate === 'boolean' ? j.animate : cfg.animate,
+			animateDuration: clampNum(j.animateDuration, cfg.animateDuration, 0, 1000),
+			lineNumbersOnlyAtCursor: typeof j.lineNumbersOnlyAtCursor === 'boolean' ? j.lineNumbersOnlyAtCursor : cfg.lineNumbersOnlyAtCursor,
+			cacheSize: clampNum(j.cacheSize, cfg.cacheSize, 10, 5000)
+		};
+		var changed = false, lnChanged = false, animChanged = false;
+		for (var k in next) {
+			if (cfg[k] !== next[k]) {
+				changed = true;
+				if (k === 'lineNumbersOnlyAtCursor') lnChanged = true;
+				if (k === 'animate' || k === 'animateDuration') animChanged = true;
+			}
+		}
+		if (!changed) return;
+		cfg = next;
+		if (animChanged) injectStyle(true);
+		mainEditors().forEach(function (ed) {
+			if (lnChanged) scheduleLineNumbers(ed);
+			applyPad(ed, false); // 配置变了重算一次（居中开关/最小宽度/留白都可能影响 pad）
+		});
+	}
+
+	var cfgUrl = null, cfgLoading = false;
+	function loadConfig() {
+		if (!cfgUrl) {
+			try { cfgUrl = new URL(CFG_REL, document.baseURI).href; } catch (e) { return; }
+		}
+		if (cfgLoading) return;
+		cfgLoading = true;
+		fetch(cfgUrl, { cache: 'no-store' })
+			.then(function (r) { return r.ok ? r.json() : null; })
+			.then(function (j) { cfgLoading = false; if (j) applyConfig(j); })
+			.catch(function () { cfgLoading = false; });
+	}
 
 	// ---------- 列数计算（与扩展侧同逻辑：tab 展开、全角计 2、去尾随空白） ----------
 	function isWide(cp) {
@@ -86,9 +142,9 @@
 		saveTimer = setTimeout(function () {
 			try {
 				var keys = Object.keys(store);
-				if (keys.length > STORE_MAX) {
+				if (keys.length > cfg.cacheSize) {
 					keys.sort(function (a, b) { return (store[a].t || 0) - (store[b].t || 0); });
-					keys.slice(0, keys.length - STORE_MAX).forEach(function (k) { delete store[k]; });
+					keys.slice(0, keys.length - cfg.cacheSize).forEach(function (k) { delete store[k]; });
 				}
 				localStorage.setItem(STORE_KEY, JSON.stringify(store));
 			} catch (e) { /* 配额或隐私模式，忽略 */ }
@@ -159,6 +215,7 @@
 	}
 
 	function computePadFor(ed) {
+		if (!cfg.center) return 0; // 回归原生布局
 		var dom = ed.getDomNode();
 		var host = dom.parentElement;
 		var avail = host ? host.clientWidth : 0;
@@ -168,8 +225,8 @@
 		var mm = li.minimap.renderMinimap !== 0 ? li.minimap.minimapWidth : 0;
 		var vsb = li.verticalScrollbarWidth;
 		var cw = charWidth(dom);
-		var target = colsFor(ed.getModel()) * cw + PAD_RIGHT;   // 想要的正文可视宽
-		var minText = Math.max(0, MIN_TEXT_WIDTH - gutter);      // 最小宽度
+		var target = colsFor(ed.getModel()) * cw + cfg.paddingRight;   // 想要的正文可视宽
+		var minText = Math.max(0, cfg.minTextWidth - gutter);      // 最小宽度
 		if (target < minText) target = minText;
 		// 纯自适应：放得下就居中，放不下自动撑满 + 横向滚动
 		return Math.max(0, Math.floor((avail - gutter - mm - vsb - target) / 2));
@@ -185,8 +242,10 @@
 	}
 
 	// ---------- 渐变：只在“内容宽度变了”的场合临时挂过渡类，避免缩放面板时拖泥带水 ----------
-	function injectStyle() {
-		if (document.getElementById('ce-style')) return;
+	function injectStyle(rebuild) {
+		var old = document.getElementById('ce-style');
+		if (old && !rebuild) return;
+		if (old) old.remove();
 		var s = document.createElement('style');
 		s.id = 'ce-style';
 		s.textContent =
@@ -196,18 +255,18 @@
 			'.monaco-editor.ce-anim .minimap,\n' +
 			'.monaco-editor.ce-anim .decorationsOverviewRuler,\n' +
 			'.monaco-editor.ce-anim .scrollbar.vertical' +
-			' { transition: left ' + ANIM_MS + 'ms ease, width ' + ANIM_MS + 'ms ease; }';
+			' { transition: left ' + cfg.animateDuration + 'ms ease, width ' + cfg.animateDuration + 'ms ease; }';
 		try { document.head.appendChild(s); } catch (e) { /* ignore */ }
 	}
 
 	function applyPad(ed, animate) {
 		var pad = computePadFor(ed);
 		if (rulerPad(ed) === pad) return;
-		if (!ANIMATE || !animate) { setRuler(ed, pad); return; }
+		if (!cfg.animate || !animate || cfg.animateDuration <= 0) { setRuler(ed, pad); return; }
 		var dom;
 		try { dom = ed.getDomNode(); dom.classList.add('ce-anim'); } catch (e) { setRuler(ed, pad); return; }
 		setRuler(ed, pad);
-		setTimeout(function () { try { dom.classList.remove('ce-anim'); } catch (e) { /* ignore */ } }, ANIM_MS + 60);
+		setTimeout(function () { try { dom.classList.remove('ce-anim'); } catch (e) { /* ignore */ } }, cfg.animateDuration + 60);
 	}
 
 	// ---------- 事件驱动：切文件 / 改内容 / 改布局都立刻重算 ----------
@@ -240,7 +299,17 @@
 	// 'on' 模式下每个 .line-numbers 元素的文本就是行号本身，直接拿来判定，
 	// 不依赖 top/transform 之类的定位实现（新版 Monaco 已经不用 style.top 了）。
 	function lineNumbersFor(ed) {
-		if (!LINE_NUM_ONLY_CURSOR) return;
+		if (!cfg.lineNumbersOnlyAtCursor) {
+			// 关掉这个功能时，把之前隐藏的行号还原
+			try {
+				var ov = ed.getDomNode().querySelector('.margin-view-overlays');
+				if (ov) {
+					var all = ov.querySelectorAll('.line-numbers');
+					for (var a = 0; a < all.length; a++) if (all[a].style.opacity) all[a].style.opacity = '';
+				}
+			} catch (e) { /* ignore */ }
+			return;
+		}
 		var renderType = 0;
 		try { renderType = ed.getOption(76).renderType; } catch (e) { return; }
 		if (renderType !== LN_RENDER_ON) return;
@@ -284,6 +353,10 @@
 	}
 
 	injectStyle();
+	loadConfig();
+	setInterval(loadConfig, CFG_POLL_MS);
+	window.addEventListener('focus', loadConfig);
+	document.addEventListener('visibilitychange', function () { if (!document.hidden) loadConfig(); });
 	setInterval(tick, 1000); // 只做兜底 + 发现新编辑器
 	tick();
 })();

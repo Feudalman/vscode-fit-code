@@ -32,6 +32,9 @@ const BUNDLE_MARKER3 = '__ceGate';
 // 所以：left 绝对不能动（动它正文会一起左移），只把 width 加 pad，让右边缘铺回编辑器最右。
 const BUNDLE_ANCHOR4 = /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
 const BUNDLE_MARKER4 = '__ceSb';
+// 渲染层读不到 VSCode 的设置，所以扩展把 centerEditor.* 写成 json 放在 bundle 旁边，
+// 渲染层（media/inject.js）定时拉取 → 改设置 1~2 秒内生效，不用重跑「启用」。
+const RUNTIME_CONFIG_FILE = 'center-editor.config.json';
 // 历史补丁痕迹（旧版在返回值上做内缩）：检测到则从备份还原后重打
 const BUNDLE_LEGACY = /contentLeft:\(__ceCE\?|__ceCE2|__ceCE4/;
 // 旧补丁（minimap 跟随内容左移 / 滚动条未钉右缘）→ 也从备份还原后按当前版本重打
@@ -227,14 +230,52 @@ async function patchBundle(htmlPath) {
 async function unpatchBundle(htmlPath) {
 	const bundle = bundlePathFor(htmlPath);
 	const bak = bundle + '.center-editor.bak';
-	// 清掉历史方案遗留的外部注入脚本，再还原 bundle
+	// 清掉历史方案遗留的外部注入脚本 + 运行时配置，再还原 bundle
 	try { fs.unlinkSync(path.join(path.dirname(bundle), 'center-editor.inject.js')); } catch (e) { /* ignore */ }
+	try { fs.unlinkSync(path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE)); } catch (e) { /* ignore */ }
 	if (fs.existsSync(bak)) {
 		await fs.promises.copyFile(bak, bundle);
 		await fs.promises.unlink(bak);
 		return true;
 	}
 	return false;
+}
+
+// 把 centerEditor.* 设置落成渲染层可读的 json（仅当 bundle 已打补丁时才写）
+function runtimeConfig() {
+	const c = vscode.workspace.getConfiguration('centerEditor');
+	const num = (k, d, lo, hi) => {
+		const v = c.get(k);
+		const n = typeof v === 'number' && isFinite(v) ? v : d;
+		return Math.min(hi, Math.max(lo, n));
+	};
+	const bool = (k, d) => {
+		const v = c.get(k);
+		return typeof v === 'boolean' ? v : d;
+	};
+	return {
+		center: bool('center', true),
+		minTextWidth: num('minTextWidth', 640, 0, 4000),
+		paddingRight: num('paddingRight', 20, 0, 400),
+		animate: bool('animate', true),
+		animateDuration: num('animateDuration', 140, 0, 1000),
+		lineNumbersOnlyAtCursor: bool('lineNumbersOnlyAtCursor', true),
+		cacheSize: num('cacheSize', 300, 10, 5000),
+	};
+}
+
+async function writeRuntimeConfig(htmlPath) {
+	if (!htmlPath) return false;
+	const bundle = bundlePathFor(htmlPath);
+	try {
+		if (!fs.existsSync(bundle)) return false;
+		const src = await fs.promises.readFile(bundle, 'utf8');
+		if (!src.includes(BUNDLE_MARKER)) return false; // 没打补丁就不留文件
+		await fs.promises.writeFile(path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE), JSON.stringify(runtimeConfig()), 'utf8');
+		return true;
+	} catch (e) {
+		return false;
+	}
 }
 
 async function cmdEnable() {
@@ -287,6 +328,7 @@ async function cmdEnable() {
 		vscode.window.showErrorMessage('Center Editor: 写入失败（权限不足？）' + e.message);
 		return;
 	}
+	await writeRuntimeConfig(htmlPath);
 	try {
 		await vscode.workspace.getConfiguration('centerEditor').update('enabled', true, vscode.ConfigurationTarget.Global);
 	} catch (e) { /* ignore */ }
@@ -327,6 +369,7 @@ async function cmdStatus() {
 		`html 内联注入块: ${html.includes(START) ? '有' : '无'}`,
 		`html 里残留 CSP meta: ${(html.match(new RegExp(CSP_META.source, 'g')) || []).length}`,
 		`bundle 备份: ${bundle && fs.existsSync(bundle + '.center-editor.bak') ? '有' : '无'}`,
+		`运行时配置: ${(() => { try { const f = path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE); return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '缺失（点一次「启用」）'; } catch (e) { return '读取失败'; } })()}`,
 		`当前文件最长行: ${cols || '-'} 列`,
 		`workbench.html: ${htmlPath || '未找到'}`,
 	];
@@ -347,6 +390,23 @@ function activate(context) {
 		}, 2000);
 	} catch {}
 
+
+	// 启动时同步一次运行时配置；之后设置一变就重写（渲染层轮询拿到即生效，不需要重载）
+	try {
+		const hp = locateWorkbenchHtml();
+		if (hp) writeRuntimeConfig(hp).catch(() => {});
+	} catch (e) { /* ignore */ }
+	try {
+		context.subscriptions.push(
+			vscode.workspace.onDidChangeConfiguration((e) => {
+				if (!e.affectsConfiguration('centerEditor')) return;
+				try {
+					const hp = locateWorkbenchHtml();
+					if (hp) writeRuntimeConfig(hp).catch(() => {});
+				} catch (err) { /* ignore */ }
+			})
+		);
+	} catch (e) { /* ignore */ }
 
 	context.subscriptions.push(vscode.commands.registerCommand('centerEditor.enable', cmdEnable));
 	context.subscriptions.push(vscode.commands.registerCommand('centerEditor.disable', cmdDisable));
