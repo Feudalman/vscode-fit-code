@@ -6,6 +6,8 @@
 
 纯自适应，无阈值配置：任何文件，只要内容放得下就居中，放不下自动撑满。
 
+![窄文件的正文居中：行号跟着正文一起缩进，minimap 与滚动条留在最右](docs/centered.png)
+
 ## 这是什么
 
 一个 VSCode 扩展，通过（可选启用的）补丁修改 VSCode 自身的布局计算：
@@ -13,6 +15,8 @@
 - **渲染层**（`media/inject.js`）：对每个编辑器，读取自己的文档全文，计算最长行的视觉宽度（Tab 展开、全角字符计 2、去尾随空白），按"自己的面板宽 − 行号列 − minimap − 滚动条 − 目标宽"算出居中内缩量，写入自己的 `rulers` 选项（透明标尺，不可见）作为载体。
 - **布局层**（bundle 补丁）：Monaco 的 `computeLayout` 读取每个编辑器自己的 rulers 载体，把内缩量应用到 glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（−2×pad）；`EditorScrollbar._setLayout` 再把承载正文的容器**加宽 pad**（不动 left），使容器右缘铺回编辑器最右。
 - **注入方式**：`media/inject.js` 内联写进 `workbench.html`。内联脚本要求移除 `workbench.html` 的 CSP meta——原文以 base64 注释留在文件里，禁用时原样还原。
+
+![原生布局与 FitCode 的几何差别：正文两侧各内缩 pad，minimap 与滚动条不动](docs/layout.svg)
 
 **切文件不闪**：渲染层是事件驱动的（`onDidChangeModel` / 内容变化 / 布局变化），切 tab 时在绘制前就把 rulers 写对；
 最长行结果按文件 uri 缓存在 `localStorage`（行数 + 字符总数 + 首尾行采样做指纹），重开同一文件直接复用。
@@ -68,6 +72,7 @@
 - `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
 - `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
 - `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
+- `docs/`：README 用的图（`centered.png` 实录截图，`layout.svg` 手画示意图）
 - `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
 
 ### 补丁原理（`src/extension.js` 的 `patchBundle`）

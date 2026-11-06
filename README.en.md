@@ -6,6 +6,8 @@ Makes the VS Code editor behave like JetBrains IDEs: **the text width follows th
 
 Fully adaptive, no thresholds to configure: any file is centered as long as it fits, and fills the panel the moment it does not.
 
+![A narrow file centered: line numbers indent with the text, the minimap and scrollbar stay on the right](docs/centered.png)
+
 ## What it is
 
 A VS Code extension that patches VS Code's own layout computation (opt-in via the Enable command):
@@ -13,6 +15,8 @@ A VS Code extension that patches VS Code's own layout computation (opt-in via th
 - **Renderer** (`media/inject.js`): for every editor, reads its own document, computes the visual width of its longest line (tabs expanded, full-width characters counted as 2 columns, trailing whitespace ignored), derives the centering inset from "own panel width − line-number gutter − minimap − scrollbar − target width", and writes it into that editor's own `rulers` option (a transparent, invisible ruler) as a carrier.
 - **Layout** (bundle patch): Monaco's `computeLayout` reads each editor's own rulers carrier and applies the inset to glyphMargin / line numbers / decorations / contentLeft (+pad) and contentWidth (−2×pad); `EditorScrollbar._setLayout` then **widens** the container that holds the text by the pad (never touching `left`), so its right edge reaches the editor's right edge.
 - **Injection**: `media/inject.js` is inlined into `workbench.html`. Inline scripts require removing that file's CSP meta — the original is kept in a base64 comment and restored verbatim on disable.
+
+![Native layout vs FitCode: the text is inset by pad on both sides, the minimap and scrollbar do not move](docs/layout.svg)
 
 **No flicker when switching files**: the renderer is event-driven (`onDidChangeModel` / content change / layout change), so the rulers are written before paint when you switch tabs. The longest-line result is cached per file uri in `localStorage` (line count + total characters + first/last line samples as a fingerprint) and reused when you reopen the file.
 Width changes animate over 140 ms by default (the `ANIMATE` / `ANIM_MS` at the top of `media/inject.js`), applied only to the left/width of `.editor-scrollable`, so mouse hit-testing is unaffected.
@@ -67,6 +71,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 - `src/extension.js`: extension logic — patching and restoring `workbench.html` / the bundle, the enable/disable commands
 - `media/inject.js`: the renderer script (column counting + writing the rulers carrier)
 - `package.nls*.json` + `l10n/`: strings. English is the source (and the fallback); every other language is one file per kind
+- `docs/`: images used by the READMEs (`centered.png` is a real screenshot, `layout.svg` is hand-drawn)
 - `test/`: CDP-driven E2E (`e2e.mjs`), offline patch body generation (`patch-bundle.js`), live geometry diagnostics (`measure.mjs`); usage and the assertion table are in `test/README.md` (Chinese)
 
 ### How the patch works (`patchBundle` in `src/extension.js`)

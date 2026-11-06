@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" width="1000" height="430" role="img" aria-label="FitCode layout: native vs centered">
+	<style>
+		.panel { fill: #ffffff; stroke: #d8dee4; stroke-width: 1; }
+		.frame { fill: none; stroke: #b6c2cf; stroke-width: 1; }
+		.gutter { fill: #cdd6df; }
+		.text { fill: #b9d5f6; }
+		.pad { fill: #ffffff; stroke: #9aa7b4; stroke-width: 1; stroke-dasharray: 4 3; }
+		.minimap { fill: #a8b8c8; }
+		.scroll { fill: #6e7781; }
+		.code { fill: #7fa8dd; }
+		.lbl { font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif; font-size: 13px; fill: #1f2328; }
+		.lbl-s { font-family: inherit; font-size: 12px; fill: #57606a; }
+		.lbl-row { font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 600; fill: #1f2328; }
+		.leader { stroke: #8c959f; stroke-width: 1; }
+		.dim { stroke: #57606a; stroke-width: 1; fill: none; }
+		.guide { stroke: #7d8590; stroke-width: 1; stroke-dasharray: 5 4; }
+	</style>
+
+	<rect x="10" y="10" width="980" height="410" rx="12" class="panel"/>
+
+	<!-- legend -->
+	<g transform="translate(40, 46)">
+		<rect x="0" y="-11" width="14" height="14" class="gutter"/>
+		<text x="20" y="0" class="lbl-s">line numbers</text>
+		<rect x="130" y="-11" width="14" height="14" class="text"/>
+		<text x="150" y="0" class="lbl-s">text</text>
+		<rect x="205" y="-11" width="14" height="14" class="pad"/>
+		<text x="225" y="0" class="lbl-s">pad</text>
+		<rect x="278" y="-11" width="14" height="14" class="minimap"/>
+		<text x="298" y="0" class="lbl-s">minimap</text>
+		<rect x="380" y="-11" width="14" height="14" class="scroll"/>
+		<text x="400" y="0" class="lbl-s">scrollbar</text>
+	</g>
+
+	<!-- native -->
+	<text x="40" y="96" class="lbl-row">native</text>
+	<g>
+		<rect x="40" y="108" width="44" height="104" class="gutter"/>
+		<rect x="84" y="108" width="780" height="104" class="text"/>
+		<rect x="864" y="108" width="40" height="104" class="minimap"/>
+		<rect x="904" y="108" width="16" height="104" class="scroll"/>
+		<rect x="40" y="108" width="880" height="104" class="frame"/>
+	</g>
+	<!-- code lines -->
+	<g class="code">
+		<rect x="98" y="124" width="300" height="6"/>
+		<rect x="98" y="140" width="470" height="6"/>
+		<rect x="112" y="156" width="380" height="6"/>
+		<rect x="112" y="172" width="250" height="6"/>
+		<rect x="98" y="188" width="196" height="6"/>
+	</g>
+	<text x="470" y="150" class="lbl-s" text-anchor="middle" dominant-baseline="middle"></text>
+
+	<!-- fitcode -->
+	<text x="40" y="272" class="lbl-row">FitCode</text>
+	<g>
+		<rect x="40" y="284" width="96" height="104" class="pad"/>
+		<rect x="136" y="284" width="44" height="104" class="gutter"/>
+		<rect x="180" y="284" width="588" height="104" class="text"/>
+		<rect x="768" y="284" width="96" height="104" class="pad"/>
+		<rect x="864" y="284" width="40" height="104" class="minimap"/>
+		<rect x="904" y="284" width="16" height="104" class="scroll"/>
+		<rect x="40" y="284" width="880" height="104" class="frame"/>
+	</g>
+	<g class="code">
+		<rect x="194" y="300" width="300" height="6"/>
+		<rect x="194" y="316" width="470" height="6"/>
+		<rect x="208" y="332" width="380" height="6"/>
+		<rect x="208" y="348" width="250" height="6"/>
+		<rect x="194" y="364" width="196" height="6"/>
+	</g>
+
+	<!-- pad dimensions -->
+	<g>
+		<line x1="44" y1="404" x2="132" y2="404" class="dim"/>
+		<line x1="44" y1="399" x2="44" y2="409" class="dim"/>
+		<line x1="132" y1="399" x2="132" y2="409" class="dim"/>
+		<text x="88" y="398" class="lbl-s" text-anchor="middle">pad</text>
+		<line x1="772" y1="404" x2="860" y2="404" class="dim"/>
+		<line x1="772" y1="399" x2="772" y2="409" class="dim"/>
+		<line x1="860" y1="399" x2="860" y2="409" class="dim"/>
+		<text x="816" y="398" class="lbl-s" text-anchor="middle">pad</text>
+	</g>
+
+	<!-- minimap + scrollbar never move -->
+	<line x1="864" y1="100" x2="864" y2="396" class="guide"/>
+	<text x="946" y="240" class="lbl-s" text-anchor="middle" transform="rotate(90 946 240)">pinned right</text>
+</svg>
