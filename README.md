@@ -8,6 +8,10 @@
 
 ![窄文件的正文居中：行号跟着正文一起缩进，minimap 与滚动条留在最右](docs/centered.png)
 
+切文件时宽度跟着变（7 秒，同一窗口依次打开不同宽度的文件）：
+
+![切文件时正文宽度收放](docs/switch.gif)
+
 ## 这是什么
 
 一个 VSCode 扩展，通过（可选启用的）补丁修改 VSCode 自身的布局计算：
@@ -72,7 +76,7 @@
 - `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
 - `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
 - `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
-- `docs/`：README 用的图（`centered.png` 实录截图，`layout.svg` 手画示意图）
+- `docs/`：README 用的图（`centered.png` 实录截图，`switch.gif` 切文件动图，`layout.svg` 手画示意图）
 - `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
 
 ### 补丁原理（`src/extension.js` 的 `patchBundle`）

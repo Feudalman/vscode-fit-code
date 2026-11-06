@@ -8,6 +8,10 @@ Fully adaptive, no thresholds to configure: any file is centered as long as it f
 
 ![A narrow file centered: line numbers indent with the text, the minimap and scrollbar stay on the right](docs/centered.png)
 
+Width follows the content when you switch files:
+
+![The text width grows and shrinks when switching files](docs/switch.gif)
+
 ## What it is
 
 A VS Code extension that patches VS Code's own layout computation (opt-in via the Enable command):
@@ -71,7 +75,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 - `src/extension.js`: extension logic — patching and restoring `workbench.html` / the bundle, the enable/disable commands
 - `media/inject.js`: the renderer script (column counting + writing the rulers carrier)
 - `package.nls*.json` + `l10n/`: strings. English is the source (and the fallback); every other language is one file per kind
-- `docs/`: images used by the READMEs (`centered.png` is a real screenshot, `layout.svg` is hand-drawn)
+- `docs/`: images used by the READMEs (`centered.png` is a real screenshot, `switch.gif` is a screen recording, `layout.svg` is hand-drawn)
 - `test/`: CDP-driven E2E (`e2e.mjs`), offline patch body generation (`patch-bundle.js`), live geometry diagnostics (`measure.mjs`); usage and the assertion table are in `test/README.md` (Chinese)
 
 ### How the patch works (`patchBundle` in `src/extension.js`)
