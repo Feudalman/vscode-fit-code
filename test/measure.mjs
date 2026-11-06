@@ -1,46 +1,83 @@
 const PORT = +(process.argv[2] || 9338);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const targets = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-const pages = targets.filter((t) => t.type === 'page' && t.url.includes('workbench'));
-console.log('workbench 窗口数:', pages.length);
+const targets = await (
+  await fetch(`http://127.0.0.1:${PORT}/json/list`)
+).json();
+const pages = targets.filter(
+  (t) => t.type === "page" && t.url.includes("workbench"),
+);
+console.log("workbench 窗口数:", pages.length);
 const ws = new WebSocket(pages[0].webSocketDebuggerUrl);
-await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-let msgId = 0; const pending = new Map();
+await new Promise((res, rej) => {
+  ws.onopen = res;
+  ws.onerror = rej;
+});
+let msgId = 0;
+const pending = new Map();
 ws.onmessage = (ev) => {
   const m = JSON.parse(ev.data);
   if (m.id && pending.has(m.id)) {
-    const p = pending.get(m.id); pending.delete(m.id);
-    m.error ? p.reject(new Error(JSON.stringify(m.error).slice(0, 120))) : p.resolve(m.result);
+    const p = pending.get(m.id);
+    pending.delete(m.id);
+    m.error
+      ? p.reject(new Error(JSON.stringify(m.error).slice(0, 120)))
+      : p.resolve(m.result);
   }
 };
 const send = (method, params = {}) => {
   const mid = ++msgId;
-  const p = new Promise((resolve, reject) => pending.set(mid, { resolve, reject }));
+  const p = new Promise((resolve, reject) =>
+    pending.set(mid, { resolve, reject }),
+  );
   ws.send(JSON.stringify({ id: mid, method, params }));
-  return Promise.race([p, sleep(10000).then(() => { throw new Error('timeout ' + method); })]);
+  return Promise.race([
+    p,
+    sleep(10000).then(() => {
+      throw new Error("timeout " + method);
+    }),
+  ]);
 };
 const evaluate = async (expression, tag) => {
-  const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) return 'ERR:' + (r.exceptionDetails.exception?.description || '').slice(0, 150);
+  const r = await send("Runtime.evaluate", {
+    expression,
+    returnByValue: true,
+    awaitPromise: true,
+  });
+  if (r.exceptionDetails)
+    return (
+      "ERR:" + (r.exceptionDetails.exception?.description || "").slice(0, 150)
+    );
   return r.result.value;
 };
 // 等页面 JS 可响应
-await send('Runtime.enable');
+await send("Runtime.enable");
 let ready = false;
 for (let i = 0; i < 40; i++) {
-  try { await send('Runtime.evaluate', { expression: '1+1', returnByValue: true }); ready = true; break; }
-  catch { await sleep(2000); }
+  try {
+    await send("Runtime.evaluate", { expression: "1+1", returnByValue: true });
+    ready = true;
+    break;
+  } catch {
+    await sleep(2000);
+  }
 }
-if (!ready) { console.log('页面始终无响应'); process.exit(1); }
-console.log('页面 JS 可响应');
+if (!ready) {
+  console.log("页面始终无响应");
+  process.exit(1);
+}
+console.log("页面 JS 可响应");
 // 等 workbench 完全起来
 for (let i = 0; i < 60; i++) {
   await sleep(1000);
-  const r = await evaluate(`!!document.querySelector('.monaco-editor') && !!document.querySelector('.statusbar-item')`, 'w').catch(() => false);
+  const r = await evaluate(
+    `!!document.querySelector('.monaco-editor') && !!document.querySelector('.statusbar-item')`,
+    "w",
+  ).catch(() => false);
   if (r) break;
 }
 await sleep(4000); // 给扩展和注入足够的启动时间
-const out = await evaluate(`(() => {
+const out = await evaluate(
+  `(() => {
   const eds=[...(window.__ftEditors||[])].filter(e=>{try{const d=e.getDomNode();return d&&d.isConnected&&d.closest('.editor-group-container')}catch{return false}});
   const ed=eds[0]; if(!ed) return {state:'no-editor', loaded:!!window.__ftLoaded, editors:window.__ftEditors?window.__ftEditors.size:0};
   const li=ed.getLayoutInfo(), dom=ed.getDomNode();
@@ -58,6 +95,9 @@ const out = await evaluate(`(() => {
     contentLeft: li.contentLeft,
     行号区左缘: li.lineNumbersLeft,
     minimap左缘: li.minimap.minimapLeft };
-})()`, 'v');
+})()`,
+  "v",
+);
 console.log(JSON.stringify(out, null, 1));
-ws.close(); process.exit(0);
+ws.close();
+process.exit(0);
