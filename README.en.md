@@ -1,6 +1,6 @@
 # FitCode
 
-English | [简体中文](README.md)
+English | [简体中文](README.md) | [Website](https://feudalman.github.io/vscode-fitcode/)
 
 **Stop twisting your neck to the left**
 
@@ -97,7 +97,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 - `src/extension.js`: extension logic — patching and restoring `workbench.html` / the bundle, the enable/disable commands
 - `media/inject.js`: the renderer script (column counting + writing the rulers carrier)
 - `package.nls*.json` + `l10n/`: strings. English is the source (and the fallback); every other language is one file per kind
-- `docs/`: images used by the READMEs (`switch.gif` is a screen recording, `layout.svg` is hand-drawn)
+- `docs/`: the website (`index.html` + `site.css` + `site.js`, served by GitHub Pages) and the images used by the READMEs (`switch.gif` is a screen recording, `layout.svg` is hand-drawn)
 - `test/`: CDP-driven E2E (`e2e.mjs`), offline patch body generation (`patch-bundle.js`), live geometry diagnostics (`measure.mjs`); usage and the assertion table are in `test/README.md` (Chinese)
 
 ### How the patch works (`patchBundle` in `src/extension.js`)

@@ -13,6 +13,7 @@ VSCode 扩展 FitCode：让编辑器正文按内容宽度居中，滚动条与 m
 - `test/patch-bundle.js`：离线生成补丁体（E2E 用），**必须与 `patchBundle` 保持同一套补丁**
 - `test/e2e.mjs` / `test/measure.mjs`：CDP 驱动的几何断言 / 现场诊断
 - `test/README.md`：E2E 用法、断言表、踩坑清单
+- `docs/`：官网（`index.html` + `site.css` + `site.js`，GitHub Pages 发这个目录）＋ README 用的图。纯静态，无构建、无依赖
 
 ## 命令
 
