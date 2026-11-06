@@ -637,23 +637,6 @@ async function cmdStatus() {
 
 /* ------------------------------------------------------------------ */
 function activate(context) {
-  // 仅开发隔离实例使用：常驻监视 /tmp/ce-work/AUTO_SPLIT 标记，组数<2 时自动分屏（E2E 用）
-  try {
-    const fsp = require("fs");
-    setInterval(() => {
-      try {
-        if (!fsp.existsSync("/tmp/ce-work/AUTO_SPLIT")) return;
-        if (vscode.window.tabGroups.all.length >= 2) {
-          fsp.rmSync("/tmp/ce-work/AUTO_SPLIT");
-          return;
-        }
-        vscode.commands
-          .executeCommand("workbench.action.splitEditor")
-          .catch(() => {});
-      } catch {}
-    }, 2000);
-  } catch {}
-
   // 启动时同步一次运行时配置；之后设置一变就重写（渲染层轮询拿到即生效，不需要重载）
   try {
     const hp = locateWorkbenchHtml();

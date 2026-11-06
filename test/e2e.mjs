@@ -1,7 +1,9 @@
 // E2E：分屏自适应 —— 每个编辑器组按自己的宽度独立计算居中；滚动条仍钉在编辑器右边缘
 import { readFileSync, writeFileSync } from "fs";
 const PORT = 9337;
-const bodyB64 = readFileSync("/tmp/fitcode/patched-body.js").toString("base64");
+// 临时根目录：默认 /tmp/fitcode，可用 FITCODE_TMP 覆盖（test/README.md 里的路径与这里一致）
+const ROOT = process.env.FITCODE_TMP || "/tmp/fitcode";
+const bodyB64 = readFileSync(`${ROOT}/patched-body.js`).toString("base64");
 const injectSrc = readFileSync(
   new URL("../media/inject.js", import.meta.url).pathname,
   "utf8",
@@ -74,18 +76,28 @@ const evaluate = async (expression, tag) => {
   return r.result.value;
 };
 const click = async (x, y, button = "left") => {
+  // 先 mouseMoved：编辑器组工具栏只在悬停后才响应，纯 press/release 点不动
+  await send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    button: "none",
+  });
   await send("Input.dispatchMouseEvent", {
     type: "mousePressed",
     x,
     y,
     button,
+    buttons: 1,
     clickCount: 1,
   });
+  await sleep(40);
   await send("Input.dispatchMouseEvent", {
     type: "mouseReleased",
     x,
     y,
     button,
+    buttons: 0,
     clickCount: 1,
   });
 };
@@ -114,19 +126,6 @@ for (let i = 0; i < 30; i++) {
   if (await evaluate(`!!window.__ftLoaded`, "inj").catch(() => false)) break;
 }
 console.log("ready（inject.js 已加载）");
-// 触碰 AUTO_SPLIT 标记：若分屏丢失，开发扩展监视器会在几秒内补分屏（标记被消费后会删掉，故每轮重写）
-for (let i = 0; i < 30; i++) {
-  writeFileSync("/tmp/ce-work/AUTO_SPLIT", "1");
-  await sleep(1000);
-  const g = await evaluate(
-    `document.querySelectorAll('.editor-group-container').length`,
-    "g",
-  ).catch(() => 0);
-  if (g >= 2) {
-    console.log("分屏已就绪");
-    break;
-  }
-}
 
 const results = [];
 const check = (name, ok, detail) => {
@@ -237,50 +236,80 @@ check(
   `距右缘=${lEd.scrollbarRightGap}px`,
 );
 
-// ============ B. 分屏（由扩展 AUTO_SPLIT 创建）============
+// ============ B. 分屏（点编辑器组工具栏的分屏按钮 + 切 tab，全程鼠键）============
+// 为何不用键盘：合成键盘事件到不了 VSCode 的命令系统（命令面板不会弹），鼠标事件可以。
+const splitButtonXY = (gi = 0) =>
+  evaluate(
+    `(() => {
+    const g = document.querySelectorAll('.editor-group-container')[${gi}];
+    const el = g && g.querySelector('.action-label.codicon-split-horizontal');
+    if (!el) return null;
+    const b = el.getBoundingClientRect();
+    return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2) };
+  })()`,
+    "splitbtn",
+  );
+const groupCount = () =>
+  evaluate(
+    `document.querySelectorAll('.editor-group-container').length`,
+    "g",
+  ).catch(() => 1);
+const btn = await splitButtonXY(0);
+if (btn) await click(btn.x, btn.y);
+for (let i = 0; i < 20; i++) {
+  await sleep(500);
+  if ((await groupCount()) >= 2) break;
+}
+// 分屏会把当前文件复制到新组（新组只有这一个 tab），所以给 0 组换成窄文件，
+// 两组内容不同，才能验证“各自独立计算”。
+await clickTab("ce-short", 0);
 const sp = await evaluate(M, "split");
 snap("B 分屏后");
-const left = sp.find((x) => !x.empty && x.gi === 0);
-const right = sp.find((x) => !x.empty && x.gi === 1);
+const byModel = (sp, name) => sp.find((x) => !x.empty && x.model === name);
+const long = byModel(sp, "ce-long.txt");
+const short = byModel(sp, "ce-short.txt");
 check(
-  "B1 分屏两组各有文件",
-  !!left && !!right && left.model !== right.model,
-  `左=${left?.model} 右=${right?.model}`,
+  "B1 分屏两组各有文件且内容不同",
+  !!long &&
+    !!short &&
+    long.gi !== short.gi &&
+    (await groupCount()) >= 2,
+  `长文件在组${long?.gi} 短文件在组${short?.gi}`,
 );
-if (left && right) {
-  const lG2 = geom(left),
-    rG2 = geom(right);
+if (long && short) {
+  const lG2 = geom(long),
+    rG2 = geom(short);
   check(
-    "B2 左组（长内容）：撑满（内缩≈0）",
+    "B2 有长内容的组：撑满（内缩≈0）",
     Math.abs(lG2.padL) <= 1,
     `内缩=${lG2.padL}`,
   );
   check(
-    "B3 右组（短内容）：居中且左右对称",
+    "B3 有短内容的组：居中且左右对称",
     rG2.padL > 0 && rG2.centered,
-    fmt({ ...rG2, paneW: right.paneW }),
+    fmt({ ...rG2, paneW: short.paneW }),
   );
   check(
     "B4 两边独立计算（不再共享同一个居中量）",
     rG2.padL - lG2.padL > 60,
-    `左=${lG2.padL} 右=${rG2.padL}`,
+    `长=${lG2.padL} 短=${rG2.padL}`,
   );
   check(
     "B5 分屏两组滚动条各自钉在自家右边缘",
-    Math.abs(left.scrollbarRightGap) <= 1 &&
-      Math.abs(right.scrollbarRightGap) <= 1,
-    `左=${left.scrollbarRightGap} 右=${right.scrollbarRightGap}`,
+    Math.abs(long.scrollbarRightGap) <= 1 &&
+      Math.abs(short.scrollbarRightGap) <= 1,
+    `长=${long.scrollbarRightGap} 短=${short.scrollbarRightGap}`,
   );
   check(
     "B6 分屏两组的 minimap 都在自家右缘（不跟内容左移）",
-    Math.abs(left.width - left.vsb - (left.minimapLeft + left.mm)) <= 1 &&
-      Math.abs(right.width - right.vsb - (right.minimapLeft + right.mm)) <= 1,
-    `左mmRight=${left.minimapLeft + left.mm}/${left.width - left.vsb} 右mmRight=${right.minimapLeft + right.mm}/${right.width - right.vsb}`,
+    Math.abs(long.width - long.vsb - (long.minimapLeft + long.mm)) <= 1 &&
+      Math.abs(short.width - short.vsb - (short.minimapLeft + short.mm)) <= 1,
+    `长mm右=${long.minimapLeft + long.mm}/${long.width - long.vsb} 短mm右=${short.minimapLeft + short.mm}/${short.width - short.vsb}`,
   );
 }
 // 截图
 const shot = await send("Page.captureScreenshot", { format: "png" });
-writeFileSync("/tmp/fitcode/e2e-split.png", Buffer.from(shot.data, "base64"));
+writeFileSync(`${ROOT}/e2e-split.png`, Buffer.from(shot.data, "base64"));
 
 console.log("\n=== E2E 汇总 ===");
 console.log(
