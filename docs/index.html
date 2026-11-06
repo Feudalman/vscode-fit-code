@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FitCode — 编辑器正文宽度跟着内容走</title>
+    <meta
+      name="description"
+      content="FitCode 是一个 VS Code 扩展：正文宽度跟着内容走。窄文件居中阅读，宽文件铺满面板，行号随正文缩进，滚动条与 minimap 原地不动。"
+    />
+    <meta name="theme-color" content="#080b11" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FitCode — 编辑器正文宽度跟着内容走" />
+    <meta
+      property="og:description"
+      content="窄文件居中阅读，宽文件铺满面板。行号跟着正文走，滚动条与 minimap 原地不动。"
+    />
+    <meta property="og:image" content="https://feudalman.github.io/vscode-fitcode/layout.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235ea8ff'/%3E%3Cpath d='M10 23V9h12v3.4H13.7v3.2H20v3.3h-6.3V23z' fill='%2306101c'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main" data-i18n="skip">跳到正文</a>
+
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="#top">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="currentColor" />
+            <path d="M10 23V9h12v3.4H13.7v3.2H20v3.3h-6.3V23z" fill="#06101c" />
+          </svg>
+          <span>FitCode</span>
+        </a>
+        <nav class="nav" aria-label="主导航">
+          <a href="#features" data-i18n="nav.features">特性</a>
+          <a href="#how" data-i18n="nav.how">原理</a>
+          <a href="#install" data-i18n="nav.install">安装</a>
+          <a href="#settings" data-i18n="nav.settings">设置</a>
+          <a href="#limits" data-i18n="nav.limits">边界</a>
+        </nav>
+        <div class="topbar-actions">
+          <button class="lang" id="lang" type="button" title="Switch language">EN</button>
+          <a
+            class="ghost"
+            href="https://github.com/Feudalman/vscode-fitcode"
+            aria-label="GitHub 仓库"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true" width="16" height="16">
+              <path
+                fill="currentColor"
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+              />
+            </svg>
+            <span data-i18n="nav.github">GitHub</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="wrap">
+          <p class="eyebrow">
+            <span class="pill" data-i18n="hero.badge">VS Code 扩展</span>
+            <span class="sep">·</span> v0.1.0
+            <span class="sep">·</span> MIT
+          </p>
+          <h1>FitCode</h1>
+          <p class="tagline" data-i18n="hero.tagline">编辑器多宽，该由内容说了算。</p>
+          <p class="lede" data-i18n="hero.lede">
+            窄文件居中阅读，宽文件铺满面板。行号跟着正文走，滚动条与 minimap 原地不动。
+          </p>
+          <div class="cta">
+            <a class="btn primary" href="#install" data-i18n="cta.install">安装</a>
+            <a
+              class="btn"
+              href="https://github.com/Feudalman/vscode-fitcode"
+              data-i18n="cta.github"
+              >在 GitHub 上查看</a
+            >
+            <a class="btn quiet" href="#how" data-i18n="cta.how">看它怎么工作</a>
+          </div>
+
+          <!-- demo -->
+          <div class="demo" id="demo">
+            <div class="demo-bar">
+              <span class="demo-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="demo-file" id="demo-file">notes.md</span>
+              <div
+                class="demo-switch"
+                role="group"
+                aria-label="布局"
+                data-i18n-label="demo.layoutAria"
+              >
+                <button type="button" data-mode="off" aria-pressed="false" data-i18n="demo.native">
+                  原生
+                </button>
+                <button type="button" data-mode="on" aria-pressed="true">FitCode</button>
+              </div>
+            </div>
+            <div
+                class="demo-tabs"
+                role="tablist"
+                aria-label="文件"
+                data-i18n-label="demo.tabsAria"
+              >
+              <button class="demo-tab" type="button" role="tab" data-file="0" aria-selected="true">
+                <i class="dot"></i>notes.md
+              </button>
+              <button class="demo-tab" type="button" role="tab" data-file="1" aria-selected="false">
+                <i class="dot"></i>metrics.tsv
+              </button>
+            </div>
+            <div class="demo-panel" id="demo-panel">
+              <div class="demo-gutter" id="demo-gutter" aria-hidden="true"></div>
+              <div class="demo-scrollable" id="demo-scrollable">
+                <pre class="demo-code" id="demo-code" aria-label="演示代码"></pre>
+              </div>
+              <div class="demo-minimap" aria-hidden="true"></div>
+              <div class="demo-scrollbar" aria-hidden="true"><i></i></div>
+              <div class="demo-pad" id="demo-pad-l" aria-hidden="true"></div>
+              <div class="demo-pad" id="demo-pad-r" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p class="demo-cap" data-i18n="demo.cap">
+            点 tab 换文件，点右上角切回原生布局。虚线是正文两侧的内缩量 pad——它由最长行算出，没有阈值可配。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="features.title">你会得到什么</h2>
+            <p data-i18n="features.lede">
+            默认值就是能用的状态。想改的都在设置里，每一项互不牵连。
+          </p>
+          </header>
+          <div class="grid">
+            <article class="card">
+              <span class="ico" aria-hidden="true">&lt;--&gt;</span>
+              <h3 data-i18n="f1.t">宽度自己找</h3>
+              <p data-i18n="f1.b">
+              每个编辑器读自己的文件，量最长那一行（Tab 展开、全角算 2 列、忽略尾随空白）。放得下就居中，放不下就撑满并横向滚动，没有阈值要调。
+            </p>
+            </article>
+            <article class="card">
+              <span class="ico" aria-hidden="true">~</span>
+              <h3 data-i18n="f2.t">切文件不闪</h3>
+              <p data-i18n="f2.b">
+              宽度是事件驱动的，切 tab 时在绘制前就写好。最长行的结果按文件缓存在 localStorage，重开直接命中。
+            </p>
+            </article>
+            <article class="card">
+              <span class="ico" aria-hidden="true">#</span>
+              <h3 data-i18n="f3.t">行号只在光标行</h3>
+              <p data-i18n="f3.b">
+              行号列只亮光标那一行，多光标每处都亮。列宽保留、只改透明度，所以正文不会跟着光标跳。
+            </p>
+            </article>
+            <article class="card">
+              <span class="ico" aria-hidden="true">|</span>
+              <h3 data-i18n="f4.t">滚动条与 minimap 不动</h3>
+              <p data-i18n="f4.b">
+              承载正文的容器只加宽、绝不左移：右边缘照旧贴着编辑器最右，竖滚动条与 overview ruler 原地不动。
+            </p>
+            </article>
+            <article class="card">
+              <span class="ico" aria-hidden="true">[]</span>
+              <h3 data-i18n="f5.t">分屏各算各的</h3>
+              <p data-i18n="f5.b">
+              每个编辑器组按自己的宽度和内容独立计算，互不干扰——内缩量是每个编辑器自己的 option，不是全局样式。
+            </p>
+            </article>
+            <article class="card">
+              <span class="ico" aria-hidden="true">✓</span>
+              <h3 data-i18n="f6.t">不想用就关</h3>
+              <p data-i18n="f6.b">
+              居中、行号跟随、宽度动画互不依赖。只想要行号跟随？把 fitcode.center 关掉就行，其余照常。
+            </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="real">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="real.title">在真实的编辑器里</h2>
+            <p data-i18n="real.lede">
+              同一窗口依次打开不同宽度的文件：正文宽度跟着最长行走，tab 栏始终满宽，滚动条与 minimap 原地不动。
+            </p>
+          </header>
+          <figure class="shot">
+            <img
+              src="switch.gif"
+              width="1600"
+              height="1026"
+              loading="lazy"
+              alt="切换文件时正文宽度收放"
+            />
+            <figcaption data-i18n="real.cap">7 秒录屏，主题 dark-arui</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="how">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="how.title">怎么做到的</h2>
+            <p data-i18n="how.lede">
+              渲染层算宽度，Monaco 的布局计算读结果。两者之间只有一条通道：编辑器自己的 rulers 选项。
+            </p>
+          </header>
+
+          <figure class="figure">
+            <img
+              src="layout.svg"
+              width="1000"
+              height="430"
+              alt="原生布局与 FitCode 布局的几何对比"
+            />
+            <figcaption data-i18n="how.figcap">
+              原生布局与 FitCode 的几何差别：正文两侧各内缩 pad，minimap 与滚动条原地不动。
+            </figcaption>
+          </figure>
+
+          <ol class="steps">
+            <li>
+              <h3 data-i18n="how.s1t">渲染层算宽度</h3>
+              <p data-i18n="how.s1b">
+                <code>media/inject.js</code> 内联进 <code>workbench.html</code>，对每个编辑器读文档全文，算出最长行的视觉宽度与居中内缩量。
+              </p>
+            </li>
+            <li>
+              <h3 data-i18n="how.s2t">借 rulers 传参</h3>
+              <p data-i18n="how.s2b">
+                内缩量写进该编辑器自己的 <code>rulers</code> 选项（一条透明、不可见的标尺）当载体——渲染层碰不到布局计算，这是唯一能安全传出去的通道。
+              </p>
+            </li>
+            <li>
+              <h3 data-i18n="how.s3t">补丁改布局</h3>
+              <p data-i18n="how.s3b">
+                Monaco 的 <code>computeLayout</code> 读 rulers，把内缩量加到 glyphMargin / 行号 / 装饰 / contentLeft，
+                contentWidth 减 2×pad；<code>EditorScrollbar._setLayout</code> 再把正文容器加宽 pad。
+              </p>
+            </li>
+          </ol>
+
+          <p class="note" data-i18n="how.note">
+            四处补丁都带唯一性断言，锚点失配就放弃打补丁，绝不猜着改；原文件在打补丁前自动备份为
+            <code>.fitcode.bak</code>，禁用时原样还原。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="install.title">安装</h2>
+            <p data-i18n="install.lede">还没上架扩展市场。克隆下来放进扩展目录，执行一次启用命令，全部可逆。</p>
+          </header>
+
+          <div class="install">
+            <ol class="install-steps">
+              <li>
+                <h3 data-i18n="install.s1t">拷进扩展目录</h3>
+                <div class="code">
+                  <div class="code-bar">
+                    <button class="copy" type="button" data-i18n="install.copy">复制</button>
+                  </div>
+                  <pre><code>git clone https://github.com/Feudalman/vscode-fitcode.git
+cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
+                </div>
+              </li>
+              <li>
+                <h3 data-i18n="install.s2t">重载窗口，执行启用</h3>
+                <p data-i18n="install.s2b">
+                  命令面板（<kbd>Cmd/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>）执行
+                  <code>FitCode: 启用</code>，按提示重载窗口。
+                </p>
+              </li>
+              <li>
+                <h3 data-i18n="install.s3t">完成</h3>
+                <p data-i18n="install.s3b">
+                  打开窄文件会居中，宽文件自动撑满。改设置 1~2 秒生效，不用重新启用，也不用重载窗口。
+                </p>
+              </li>
+            </ol>
+
+            <aside class="tips">
+              <div class="tip">
+                <strong data-i18n="install.offT">停用</strong>
+                <p data-i18n="install.offB">
+                  执行 <code>FitCode: 禁用</code> 再重载窗口，两个被改的文件会从自动备份原样还原。
+                </p>
+              </div>
+              <div class="tip">
+                <strong data-i18n="install.upT">升级</strong>
+                <p data-i18n="install.upB">
+                  换上新版扩展目录后再执行一次启用：检测到旧补丁会先从备份还原，再按新版重打。
+                </p>
+              </div>
+              <div class="tip warn">
+                <strong data-i18n="install.warnT">首次启用可能提示"安装似乎损坏"</strong>
+                <p data-i18n="install.warnB">
+                  这是 VS Code 哈希校验的预期反应（它不认识被改过的文件），点关闭即可。
+                </p>
+              </div>
+            </aside>
+          </div>
+
+          <div class="agent">
+            <div>
+              <p class="agent-badge">AI</p>
+              <h3 data-i18n="agent.title">不想手动装？把这段丢给 agent</h3>
+              <p data-i18n="agent.desc">
+                原样发给 Claude Code、Codex 这类能执行命令的 AI，它会自己克隆、装进扩展目录、打好补丁。装完你只需要重载一次窗口。
+              </p>
+            </div>
+            <div class="code">
+              <div class="code-bar">
+                <button class="copy" type="button" data-i18n="install.copy">复制</button>
+              </div>
+              <pre><code data-i18n="agent.prompt">帮我装一下 FitCode 这个 VS Code 扩展，它让编辑器的正文宽度跟着内容走。
+
+1. 把 https://github.com/Feudalman/vscode-fitcode.git 克隆到临时目录
+2. 在仓库里执行 node test/apply.cjs install，把扩展同步进 ~/.vscode/extensions/
+3. 再执行 node test/apply.cjs enable，给 VS Code 安装目录打补丁
+4. 执行 node test/apply.cjs status，确认补丁已经打上
+5. 最后提醒我重载一次 VS Code 窗口
+
+几点注意：
+- enable 会改 VS Code 安装目录里的 workbench.desktop.main.js 和 workbench.html，改之前自动备份，禁用时原样还原
+- 找不到 VS Code 安装目录就先问我，别猜路径
+- 除了扩展目录和 VS Code 安装目录，别动我其它文件</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="settings">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="settings.title">设置</h2>
+            <p data-i18n="settings.lede">启用后生效，改完 1~2 秒刷新，不用重载窗口。</p>
+          </header>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="th.key">设置</th>
+                  <th data-i18n="th.default">默认值</th>
+                  <th data-i18n="th.effect">作用</th>
+                  <th data-i18n="th.off">关掉居中后</th>
+                </tr>
+              </thead>
+              <tbody id="settings-body"></tbody>
+            </table>
+          </div>
+
+          <div class="recipes">
+            <div class="recipe">
+              <h3 data-i18n="recipe1.t">只要行号跟着光标</h3>
+              <pre><code>{ "fitcode.center": false }</code></pre>
+            </div>
+            <div class="recipe">
+              <h3 data-i18n="recipe2.t">居中，行号保持原生</h3>
+              <pre><code>{ "fitcode.lineNumbersOnlyAtCursor": false }</code></pre>
+            </div>
+            <div class="recipe">
+              <h3 data-i18n="recipe3.t">居中，不要动画</h3>
+              <pre><code>{ "fitcode.animate": false }</code></pre>
+            </div>
+          </div>
+
+          <p class="note" data-i18n="settings.note">
+            渲染层拿不到 VS Code 的设置 API，所以扩展把设置写进
+            <code>out/vs/workbench/fitcode.config.json</code>（启用时创建、禁用时删除），渲染层每 2 秒以及窗口聚焦时拉一次。
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="limits">
+        <div class="wrap">
+          <header class="sec-head">
+            <h2 data-i18n="limits.title">它不做什么</h2>
+            <p data-i18n="limits.lede">这些边界是设计的一部分，不是待修的 bug。</p>
+          </header>
+          <ul class="limits">
+            <li data-i18n="lim1">
+              开启 <code>editor.wordWrap</code> 的文件不居中——自动换行模式下居中无意义。
+            </li>
+            <li data-i18n="lim2">
+              编辑器面板窄于 400px 时不居中——窗口被缩成小方块时看起来就是"完全没生效"。
+            </li>
+            <li data-i18n="lim3">
+              VS Code 升级可能让补丁锚点失配，扩展会检测并拒绝打补丁（不会损坏安装），需等适配新版本。
+            </li>
+            <li data-i18n="lim4">
+              它修改的是安装目录里的文件：扩展卸载不会自动还原，先执行一次禁用再卸载。
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div>
+          <span class="brand-mini">FitCode</span>
+          <span data-i18n="footer.license">MIT 许可 · 由 Feudalman 维护</span>
+        </div>
+        <nav aria-label="其他链接">
+          <a href="https://github.com/Feudalman/vscode-fitcode">GitHub</a>
+          <a href="https://github.com/Feudalman/vscode-fitcode/blob/main/README.md" data-i18n="footer.docs"
+            >说明文档</a
+          >
+          <a href="https://github.com/Feudalman/dark-arui" data-i18n="footer.theme">配色主题 dark-arui</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script src="site.js"></script>
+  </body>
+</html>
