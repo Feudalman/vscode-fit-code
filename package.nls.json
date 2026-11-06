@@ -1,0 +1,14 @@
+{
+	"fitcode.description": "Center the editor text like JetBrains does: width follows the longest line of the current file",
+	"fitcode.command.enable.title": "FitCode: Enable (write into the VS Code install folder)",
+	"fitcode.command.disable.title": "FitCode: Disable (restore the VS Code install folder)",
+	"fitcode.command.status.title": "FitCode: Show status",
+	"fitcode.config.enabled.description": "Whether FitCode is written into the VS Code install folder. Maintained by the Enable/Disable commands; do not edit by hand.",
+	"fitcode.config.center.description": "Center the text. Turn it off to go back to the native layout (takes effect in 1-2 seconds, no window reload needed).",
+	"fitcode.config.minTextWidth.description": "Minimum text width in pixels.",
+	"fitcode.config.paddingRight.description": "Extra padding on the right of the text, in pixels.",
+	"fitcode.config.animate.description": "Animate the width when switching files or when the content changes.",
+	"fitcode.config.animateDuration.description": "Width animation duration in milliseconds. 0 disables the animation.",
+	"fitcode.config.lineNumbersOnlyAtCursor.description": "Show line numbers only on the cursor lines (all of them when there are multiple cursors). Turn it off to restore the native line numbers.",
+	"fitcode.config.cacheSize.description": "Maximum number of cached widths per file."
+}

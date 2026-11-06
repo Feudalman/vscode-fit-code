@@ -1,5 +1,7 @@
 # FitCode
 
+[English](README.en.md) | 简体中文
+
 让 VSCode 的编辑器像 JetBrains 那样：**正文宽度自适应内容**——内容窄时编辑区居中，内容超出面板时自动撑满并横向滚动。行号跟随正文一起缩进，tab 栏永远满宽，**滚动条与 minimap 始终钉在编辑器右边缘**。
 
 纯自适应，无阈值配置：任何文件，只要内容放得下就居中，放不下自动撑满。
@@ -65,6 +67,7 @@
 
 - `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
 - `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
+- `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
 - `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
 
 ### 补丁原理（`src/extension.js` 的 `patchBundle`）

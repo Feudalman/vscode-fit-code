@@ -2,6 +2,17 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 
+// 文案：走 VSCode 官方 l10n。源码里写英文，英文本身就是 key（fallback 永远是英文），
+// 其它语言放在 l10n/bundle.l10n.<locale>.json —— 加语言只加 json，不改代码。
+// 「设置/命令」的清单文案在 package.nls*.json 里，是另一套（同名 key 不同文件，别混）。
+// 老版本 VSCode 没有 vscode.l10n（< 1.73）时退回英文原文。
+function t(msg, ...args) {
+	try {
+		if (vscode.l10n && typeof vscode.l10n.t === 'function') return vscode.l10n.t(msg, ...args);
+	} catch (e) { /* 落到下面的占位符替换 */ }
+	return String(msg).replace(/\{(\d+)\}/g, (m, i) => (args[i] === undefined ? m : String(args[i])));
+}
+
 const START = '<!-- !! FITCODE-START !! -->';
 const END = '<!-- !! FITCODE-END !! -->';
 const CSP_COMMENT = /<!-- !! FITCODE-CSP ([A-Za-z0-9+/=]*) !! -->/;
@@ -171,7 +182,7 @@ const asset = (name) => fs.readFileSync(path.join(__dirname, '..', 'media', name
 
 async function patchBundle(htmlPath) {
 	const bundle = bundlePathFor(htmlPath);
-	if (!fs.existsSync(bundle)) return { ok: false, error: '找不到 workbench.desktop.main.js' };
+	if (!fs.existsSync(bundle)) return { ok: false, error: t('Cannot find workbench.desktop.main.js') };
 	let src = await fs.promises.readFile(bundle, 'utf8');
 	const bak = bundle + '.fitcode.bak';
 	migrateLegacyBackup(bak);
@@ -179,7 +190,9 @@ async function patchBundle(htmlPath) {
 	const looksLegacy = BUNDLE_LEGACY.test(src) || BUNDLE_LEGACY_V5.test(src) || src.includes(LEGACY_LOADER)
 		|| LEGACY_BUNDLE_MARKS.some((m) => src.includes(m));
 	if (looksLegacy) {
-		if (!fs.existsSync(bak)) return { ok: false, error: '检测到旧版补丁但没有备份，无法安全升级，请手动还原 bundle' };
+		if (!fs.existsSync(bak)) {
+			return { ok: false, error: t('Found a previous patch but no backup, so it is unsafe to upgrade. Please restore the bundle manually.') };
+		}
 		src = await fs.promises.readFile(bak, 'utf8');
 	}
 	if (!fs.existsSync(bak)) await fs.promises.writeFile(bak, src, 'utf8');
@@ -189,7 +202,7 @@ async function patchBundle(htmlPath) {
 
 	if (!src.includes(BUNDLE_MARKER)) {
 		const hits = src.match(new RegExp(BUNDLE_ANCHOR.source, 'g')) || [];
-		if (hits.length !== 1) return { ok: false, error: `锚点1匹配 ${hits.length} 处` };
+		if (hits.length !== 1) return { ok: false, error: t('Anchor 1 matched {0} places', hits.length) };
 		src = src.replace(
 			BUNDLE_ANCHOR,
 			'_createConfiguration($1,$2,$3,$4){var __ft=new $5($1,$2,$3,this._domElement,$4);' + reg + ';return __ft}'
@@ -205,10 +218,10 @@ async function patchBundle(htmlPath) {
 		src = BUNDLE_FLAG + src;
 		changed = true;
 	}
-	if (!src.includes(';return __ft}')) return { ok: false, error: '补丁自检失败：return 后缺少右花括号' };
+	if (!src.includes(';return __ft}')) return { ok: false, error: t('Patch self-check failed: missing closing brace after return') };
 	if (!src.includes(BUNDLE_MARKER3)) {
 		const hits3 = src.match(new RegExp(BUNDLE_ANCHOR3.source, 'g')) || [];
-		if (hits3.length !== 1) return { ok: false, error: `锚点3头 匹配 ${hits3.length} 处` };
+		if (hits3.length !== 1) return { ok: false, error: t('Anchor 3 head matched {0} places', hits3.length) };
 		src = src.replace(
 			BUNDLE_ANCHOR3,
 			'computeLayout($1,$2){' +
@@ -219,7 +232,7 @@ async function patchBundle(htmlPath) {
 				'let $3=$2.outerWidth|0'
 		);
 		const hits3r = src.match(new RegExp(BUNDLE_ANCHOR3R.source, 'g')) || [];
-		if (hits3r.length !== 1) return { ok: false, error: `锚点3返回 匹配 ${hits3r.length} 处` };
+		if (hits3r.length !== 1) return { ok: false, error: t('Anchor 3 return matched {0} places', hits3r.length) };
 		src = src.replace(
 			BUNDLE_ANCHOR3R,
 			'{width:$1,height:$2,glyphMarginLeft:$3+__ftP,glyphMarginWidth:$4,glyphMarginDecorationLaneCount:$5,' +
@@ -231,7 +244,7 @@ async function patchBundle(htmlPath) {
 	}
 	if (!src.includes(BUNDLE_MARKER4)) {
 		const hits4 = src.match(new RegExp(BUNDLE_ANCHOR4.source, 'g')) || [];
-		if (hits4.length !== 1) return { ok: false, error: `锚点4 匹配 ${hits4.length} 处` };
+		if (hits4.length !== 1) return { ok: false, error: t('Anchor 4 matched {0} places', hits4.length) };
 		src = src.replace(
 			BUNDLE_ANCHOR4,
 			'_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);' +
@@ -330,12 +343,14 @@ async function checkPatchAlive() {
 		return;
 	}
 	if (!wanted || isBundlePatched(htmlPath)) return;
+	// 按钮文案先存成变量：VSCode 回传的就是这里给的字符串，拿中文字面量比较会永远不相等
+	const reEnable = t('Re-enable');
 	const pick = await vscode.window.showWarningMessage(
-		'FitCode 补丁已失效（VSCode 更新会替换安装目录），需要重新启用一次。',
-		'重新启用',
-		'暂时不用'
+		t('The FitCode patch is gone (a VS Code update replaces the install folder). Please enable it once more.'),
+		reEnable,
+		t('Not now')
 	);
-	if (pick === '重新启用') {
+	if (pick === reEnable) {
 		try { await vscode.commands.executeCommand('fitcode.enable'); } catch (e) { /* ignore */ }
 	}
 }
@@ -343,7 +358,7 @@ async function checkPatchAlive() {
 async function cmdEnable() {
 	const htmlPath = locateWorkbenchHtml();
 	if (!htmlPath) {
-		vscode.window.showErrorMessage('FitCode: 找不到 workbench.html');
+		vscode.window.showErrorMessage(t('FitCode: cannot find workbench.html'));
 		return;
 	}
 	let html = await fs.promises.readFile(htmlPath, 'utf8');
@@ -388,16 +403,20 @@ async function cmdEnable() {
 	try {
 		await fs.promises.writeFile(htmlPath, html, 'utf8');
 	} catch (e) {
-		vscode.window.showErrorMessage('FitCode: 写入失败（权限不足？）' + e.message);
+		vscode.window.showErrorMessage(t('FitCode: write failed (permission denied?). {0}', e.message));
 		return;
 	}
 	await writeRuntimeConfig(htmlPath);
 	try {
 		await vscode.workspace.getConfiguration('fitcode').update('enabled', true, vscode.ConfigurationTarget.Global);
 	} catch (e) { /* ignore */ }
-	const msg = 'FitCode 已写入，需要重载窗口生效。' + (removedOther ? '（已清除之前 Custom CSS 的注入）' : '');
-	const pick = await vscode.window.showInformationMessage(msg, '重载窗口');
-	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
+	// 整句各翻译一份，避免拼出「中文 + 半个英文括号」这种讲不通的句子
+	const reload = t('Reload Window');
+	const msg = removedOther
+		? t('FitCode is applied and the previous Custom CSS injection was removed. Reload the window to take effect.')
+		: t('FitCode is applied. Reload the window to take effect.');
+	const pick = await vscode.window.showInformationMessage(msg, reload);
+	if (pick === reload) vscode.commands.executeCommand('workbench.action.reloadWindow');
 }
 
 async function cmdDisable() {
@@ -416,8 +435,9 @@ async function cmdDisable() {
 	try {
 		await vscode.workspace.getConfiguration('fitcode').update('enabled', false, vscode.ConfigurationTarget.Global);
 	} catch (e) { /* ignore */ }
-	const pick = await vscode.window.showInformationMessage('FitCode 已还原，需重载窗口。', '重载窗口');
-	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
+	const reload = t('Reload Window');
+	const pick = await vscode.window.showInformationMessage(t('FitCode has been restored. Reload the window.'), reload);
+	if (pick === reload) vscode.commands.executeCommand('workbench.action.reloadWindow');
 }
 
 async function cmdStatus() {
@@ -426,15 +446,24 @@ async function cmdStatus() {
 	const cols = vscode.window.activeTextEditor ? columnsOfEditor(vscode.window.activeTextEditor) : 0;
 	const bundle = htmlPath ? bundlePathFor(htmlPath) : '';
 	const bundleSrc = bundle && fs.existsSync(bundle) ? fs.readFileSync(bundle, 'utf8') : '';
+	const yesNo = (b) => (b ? t('Yes') : t('No'));
+	const runtimeCfg = (() => {
+		try {
+			const f = path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE);
+			return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : t('missing (run Enable once)');
+		} catch (e) {
+			return t('read failed');
+		}
+	})();
 	const lines = [
-		`bundle 已打补丁: ${bundleSrc.includes(BUNDLE_MARKER) ? '是' : '否'}`,
-		`滚动条/minimap 钉右: ${bundleSrc.includes(BUNDLE_MARKER4) ? '是' : '否'}`,
-		`html 内联注入块: ${html.includes(START) ? '有' : '无'}`,
-		`html 里残留 CSP meta: ${(html.match(new RegExp(CSP_META.source, 'g')) || []).length}`,
-		`bundle 备份: ${bundle && fs.existsSync(bundle + '.fitcode.bak') ? '有' : '无'}`,
-		`运行时配置: ${(() => { try { const f = path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE); return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '缺失（点一次「启用」）'; } catch (e) { return '读取失败'; } })()}`,
-		`当前文件最长行: ${cols || '-'} 列`,
-		`workbench.html: ${htmlPath || '未找到'}`,
+		t('Bundle patched: {0}', yesNo(bundleSrc.includes(BUNDLE_MARKER))),
+		t('Scrollbar and minimap pinned right: {0}', yesNo(bundleSrc.includes(BUNDLE_MARKER4))),
+		t('Inline injection block in html: {0}', yesNo(html.includes(START))),
+		t('Leftover CSP meta in html: {0}', (html.match(new RegExp(CSP_META.source, 'g')) || []).length),
+		t('Bundle backup: {0}', yesNo(bundle && fs.existsSync(bundle + '.fitcode.bak'))),
+		t('Runtime config: {0}', runtimeCfg),
+		t('Longest line in current file: {0} cols', cols || '-'),
+		t('workbench.html: {0}', htmlPath || t('not found')),
 	];
 	vscode.window.showInformationMessage('FitCode — ' + lines.join('\n'), { modal: true });
 }

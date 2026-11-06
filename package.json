@@ -1,7 +1,7 @@
 {
 	"name": "fitcode",
 	"displayName": "FitCode",
-	"description": "让编辑器正文像 JetBrains 那样居中：宽度 = 当前文件最长一行的宽度",
+	"description": "%fitcode.description%",
 	"version": "0.3.0",
 	"publisher": "local",
 	"license": "MIT",
@@ -15,6 +15,7 @@
 		"Other"
 	],
 	"main": "./src/extension.js",
+	"l10n": "./l10n",
 	"activationEvents": [
 		"onStartupFinished"
 	],
@@ -25,65 +26,65 @@
 				"fitcode.enabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "FitCode 是否已写入 VSCode 安装目录。由「启用/禁用」命令自动维护，勿手改。"
+					"description": "%fitcode.config.enabled.description%"
 				},
 				"fitcode.center": {
 					"type": "boolean",
 					"default": true,
-					"description": "正文居中。关闭即回归原生布局（1~2 秒内生效，无需重载窗口）。"
+					"description": "%fitcode.config.center.description%"
 				},
 				"fitcode.minTextWidth": {
 					"type": "number",
 					"default": 640,
 					"minimum": 0,
 					"maximum": 4000,
-					"description": "正文最小宽度（像素）。"
+					"description": "%fitcode.config.minTextWidth.description%"
 				},
 				"fitcode.paddingRight": {
 					"type": "number",
 					"default": 20,
 					"minimum": 0,
 					"maximum": 400,
-					"description": "正文右侧额外留白（像素）。"
+					"description": "%fitcode.config.paddingRight.description%"
 				},
 				"fitcode.animate": {
 					"type": "boolean",
 					"default": true,
-					"description": "切换文件/内容变化时宽度渐变。"
+					"description": "%fitcode.config.animate.description%"
 				},
 				"fitcode.animateDuration": {
 					"type": "number",
 					"default": 140,
 					"minimum": 0,
 					"maximum": 1000,
-					"description": "宽度渐变时长（毫秒），0 表示不渐变。"
+					"description": "%fitcode.config.animateDuration.description%"
 				},
 				"fitcode.lineNumbersOnlyAtCursor": {
 					"type": "boolean",
 					"default": true,
-					"description": "行号只显示光标所在行（多光标则每处都显示）。关闭即恢复原生行号。"
+					"description": "%fitcode.config.lineNumbersOnlyAtCursor.description%"
 				},
 				"fitcode.cacheSize": {
 					"type": "number",
 					"default": 300,
 					"minimum": 10,
 					"maximum": 5000,
-					"description": "每文件宽度缓存的条数上限。"
+					"description": "%fitcode.config.cacheSize.description%"
 				}
 			}
 		},
 		"commands": [
 			{
 				"command": "fitcode.enable",
-				"title": "FitCode: 启用（写入 VSCode 安装目录）"
+				"title": "%fitcode.command.enable.title%"
 			},
 			{
 				"command": "fitcode.disable",
-				"title": "FitCode: 禁用（还原安装目录）"
+				"title": "%fitcode.command.disable.title%"
 			},
 			{
 				"command": "fitcode.status",
-				"title": "FitCode: 显示状态"
+				"title": "%fitcode.command.status.title%"
 			}
 		]
 	}

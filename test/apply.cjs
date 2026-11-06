@@ -67,9 +67,30 @@ function settingValue(dotted) {
 	return dotted.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), USER_SETTINGS);
 }
 
+// ---------- l10n ----------
+// 命令行里没有「界面语言」，而扩展的文案都走 vscode.l10n（源码是英文 key）。
+// 这里按 FITCODE_LANG 挑语言包（默认 zh-cn，保持以前看到的中文输出），
+// 没有对应语言包时就用英文原文。
+const LANG = process.env.FITCODE_LANG || 'zh-cn';
+const L10N_BUNDLE = (() => {
+	try {
+		return JSON.parse(fs.readFileSync(path.join(REPO, 'l10n', `bundle.l10n.${LANG}.json`), 'utf8'));
+	} catch (e) {
+		return {};
+	}
+})();
+function localize(msg, ...args) {
+	const s = Object.prototype.hasOwnProperty.call(L10N_BUNDLE, msg) ? L10N_BUNDLE[msg] : msg;
+	// l10n.t 支持位置参数（{0}）和命名参数（{name}）两种
+	const named = args.length === 1 && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0]);
+	const values = named ? args[0] : args;
+	return String(s).replace(/\{(\w+)\}/g, (m, k) => (values[k] === undefined ? m : String(values[k])));
+}
+
 // ---------- vscode 模块 stub ----------
 const stub = {
 	ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+	l10n: { t: localize, bundle: L10N_BUNDLE },
 	workspace: {
 		getConfiguration(section) {
 			return {
@@ -102,12 +123,17 @@ process.env.FITCODE_APP_ROOT = APP_ROOT;
 
 function installExtension() {
 	const dst = path.join(EXT_ROOT, EXT_DIR_NAME);
-	for (const f of ['src/extension.js', 'media/inject.js', 'package.json', 'README.md']) {
+	// 语言包必须一起拷：少了 package.nls*.json，清单（命令名/设置说明）就只有英文；
+	// 少了 l10n/，弹窗和状态输出就只有英文。加语言不用改这里，目录里有啥拷啥。
+	const files = ['src/extension.js', 'media/inject.js', 'package.json', 'README.md', 'README.en.md']
+		.concat(fs.readdirSync(REPO).filter((f) => /^package\.nls(\.[\w-]+)?\.json$/.test(f)))
+		.concat(fs.readdirSync(path.join(REPO, 'l10n')).map((f) => `l10n/${f}`));
+	for (const f of files) {
 		const target = path.join(dst, f);
 		fs.mkdirSync(path.dirname(target), { recursive: true });
 		fs.copyFileSync(path.join(REPO, f), target);
 	}
-	console.log(`已同步扩展代码到 ${dst}`);
+	console.log(`已同步扩展代码到 ${dst}（${files.length} 个文件，含语言包）`);
 	try {
 		for (const d of fs.readdirSync(EXT_ROOT)) {
 			if (d === EXT_DIR_NAME) continue;

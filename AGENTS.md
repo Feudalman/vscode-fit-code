@@ -49,8 +49,10 @@ node test/apply.cjs status      # 查安装态 + 运行时配置
 5. 不要用外部 `<script>` 加载注入脚本（CSP 的 `require-trusted-types-for 'script'` 会拦），注入只走 html 内联。
 6. 补丁锚点必须带唯一性断言，失配就放弃打补丁，绝不"猜着改"。
 7. 行号显隐只改 `opacity`（保留行号列宽度），不要动 `lineNumbersWidth` / gutter——否则正文位置会跟着光标跳。
-8. 渲染层读不到 VSCode 设置：新增开关要同时改三处——`package.json` 的 `contributes.configuration`、
-   `src/extension.js` 的 `runtimeConfig()`、`media/inject.js` 的 `DEFAULTS` + `applyConfig()`。
+8. 渲染层读不到 VSCode 设置：新增开关要同时改五处——`package.json` 的 `contributes.configuration`
+   （`description` 写成 `%fitcode.config.<名字>.description%`）、`package.nls.json` 和
+   `package.nls.zh-cn.json` 各补一条说明、`src/extension.js` 的 `runtimeConfig()`、
+   `media/inject.js` 的 `DEFAULTS` + `applyConfig()`。
 
 ## 排查"改了没生效"
 
