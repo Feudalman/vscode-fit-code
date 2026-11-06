@@ -1,116 +1,115 @@
 # FitCode
 
-[English](README.en.md) | 简体中文 | [官网](https://feudalman.github.io/vscode-fitcode/)
+English | [简体中文](README.zh-CN.md) | [Website](https://feudalman.github.io/vscode-fitcode/)
 
-**避免脖子左拧**
+**Stop twisting your neck to the left**
 
-让 VSCode 的编辑器像 JetBrains 那样：**正文宽度自适应内容**——内容窄时编辑区居中，内容超出面板时自动撑满并横向滚动。行号跟随正文一起缩进，tab 栏永远满宽，**滚动条与 minimap 始终钉在编辑器右边缘**。
+Makes the VS Code editor behave like JetBrains IDEs: **the text width follows the content** — narrow content gets centered, content wider than the panel fills it and scrolls horizontally. Line numbers indent together with the text, the tab bar always spans the full width, and the **scrollbar and minimap stay pinned to the editor's right edge**.
 
-纯自适应，无阈值配置：任何文件，只要内容放得下就居中，放不下自动撑满。切文件时宽度跟着变（7 秒，同一窗口依次打开不同宽度的文件）：
+Fully adaptive, no thresholds to configure: any file is centered as long as it fits, and fills the panel the moment it does not. Width follows the content when you switch files (7 s, several files of different widths opened in one window):
 
-![切文件时正文宽度收放](docs/switch.gif)
+![The text width grows and shrinks when switching files](docs/switch.gif)
 
-> 画面里的主题也是自己写的：插件市场搜 `dark-arui`，源码在 [Feudalman/dark-arui](https://github.com/Feudalman/dark-arui)。
+> The theme in the recording is my own too: search `dark-arui` in the Marketplace, source at [Feudalman/dark-arui](https://github.com/Feudalman/dark-arui).
 
-居中、行号跟随光标、宽度动画这三件事互不依赖，只要其中一个也行。比如不需要居中、只想让行号跟着光标走，把 `fitcode.center` 设成 `false` 就够，行号那部分照常工作。所有设置见下面「设置」。
+Centering, line numbers following the cursor and the width animation don't depend on each other, so you can keep just one of them. If you want the line numbers to follow the cursor and nothing else, set `fitcode.center` to `false` and the line-number part keeps working. All the switches are listed under Settings below.
 
-## 这是什么
+## What it is
 
-一个 VSCode 扩展，通过（可选启用的）补丁修改 VSCode 自身的布局计算：
+A VS Code extension that patches VS Code's own layout computation (opt-in via the Enable command):
 
-- **渲染层**（`media/inject.js`）：对每个编辑器，读取自己的文档全文，计算最长行的视觉宽度（Tab 展开、全角字符计 2、去尾随空白），按"自己的面板宽 − 行号列 − minimap − 滚动条 − 目标宽"算出居中内缩量，写入自己的 `rulers` 选项（透明标尺，不可见）作为载体。
-- **布局层**（bundle 补丁）：Monaco 的 `computeLayout` 读取每个编辑器自己的 rulers 载体，把内缩量应用到 glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（−2×pad）；`EditorScrollbar._setLayout` 再把承载正文的容器**加宽 pad**（不动 left），使容器右缘铺回编辑器最右。
-- **注入方式**：`media/inject.js` 内联写进 `workbench.html`。内联脚本要求移除 `workbench.html` 的 CSP meta——原文以 base64 注释留在文件里，禁用时原样还原。
+- **Renderer** (`media/inject.js`): for every editor, reads its own document, computes the visual width of its longest line (tabs expanded, full-width characters counted as 2 columns, trailing whitespace ignored), derives the centering inset from "own panel width − line-number gutter − minimap − scrollbar − target width", and writes it into that editor's own `rulers` option (a transparent, invisible ruler) as a carrier.
+- **Layout** (bundle patch): Monaco's `computeLayout` reads each editor's own rulers carrier and applies the inset to glyphMargin / line numbers / decorations / contentLeft (+pad) and contentWidth (−2×pad); `EditorScrollbar._setLayout` then **widens** the container that holds the text by the pad (never touching `left`), so its right edge reaches the editor's right edge.
+- **Injection**: `media/inject.js` is inlined into `workbench.html`. Inline scripts require removing that file's CSP meta — the original is kept in a base64 comment and restored verbatim on disable.
 
-![原生布局与 FitCode 的几何差别：正文两侧各内缩 pad，minimap 与滚动条不动](docs/layout.svg)
+![Native layout vs FitCode: the text is inset by pad on both sides, the minimap and scrollbar do not move](docs/layout.svg)
 
-**切文件不闪**：渲染层是事件驱动的（`onDidChangeModel` / 内容变化 / 布局变化），切 tab 时在绘制前就把 rulers 写对；
-最长行结果按文件 uri 缓存在 `localStorage`（行数 + 字符总数 + 首尾行采样做指纹），重开同一文件直接复用。
-宽度变化默认带 140ms CSS 过渡（`media/inject.js` 顶部的 `ANIMATE` / `ANIM_MS`），只作用于 `.editor-scrollable` 的 left/width，不影响鼠标命中。
+**No flicker when switching files**: the renderer is event-driven (`onDidChangeModel` / content change / layout change), so the rulers are written before paint when you switch tabs. The longest-line result is cached per file uri in `localStorage` (line count + total characters + first/last line samples as a fingerprint) and reused when you reopen the file.
+Width changes animate over 140 ms by default (the `ANIMATE` / `ANIM_MS` at the top of `media/inject.js`), applied only to the left/width of `.editor-scrollable`, so mouse hit-testing is unaffected.
 
-**行号只显示光标行**：`editor.lineNumbers` 为 `on` 时，行号列只显示光标所在行（多光标则每处都显示）。
-行号列宽度保留（只改 `opacity`），所以光标移动时正文位置不会跟着跳。`off` 不受影响，`relative` / `interval` 保持原生行为。
+**Line numbers only on the cursor line**: with `editor.lineNumbers` set to `on`, only the cursor line shows a number (every cursor when there are several).
+The gutter keeps its width (only `opacity` changes), so the text does not jump as the cursor moves. `off` is unaffected; `relative` / `interval` keep their native behavior.
 
-**只有正文/行号居中**：minimap 与滚动条保持贴右边缘（滚动条是正文容器的子元素，靠"容器只加宽不左移"实现）。
+**Only the text and line numbers are centered**: the minimap and the scrollbar stay pinned to the right edge (the scrollbar is a child of the text container, which is only widened, never shifted).
 
-**分屏时每个编辑器组按自己的宽度和内容独立计算**，互不干扰（rulers 是每编辑器独立的真实 option，天然无冲突）。
+**With split editors, every group computes independently** from its own width and content (rulers are a real per-editor option, so there is nothing to conflict).
 
-## 安装与使用
+## Install and use
 
-本扩展修改 VSCode 安装目录内的两个文件（都自动备份、可一键还原）：
+The extension modifies two files inside the VS Code install folder (both are backed up automatically and restored with one command):
 
-- `workbench.desktop.main.js`：4 处锚点补丁
-- `workbench.html`：插入内联注入脚本（并把 CSP meta 挪进 base64 注释）
+- `workbench.desktop.main.js`: 4 anchored patches
+- `workbench.html`: inserts the inline injection script (and moves the CSP meta into a base64 comment)
 
-1. 将本目录拷贝到 `~/.vscode/extensions/local.fitcode-<package.json 里的 version>/`
-2. 重载窗口后，命令面板执行 **`FitCode: 启用`** → 按提示重载窗口
-3. 完成——打开窄文件会居中，宽文件自动撑满
+1. Copy this folder to `~/.vscode/extensions/local.fitcode-<version from package.json>/`
+2. Reload the window, run **`FitCode: Enable`** from the Command Palette, then reload again when prompted
+3. Done — narrow files are centered, wide files fill the panel
 
-**停用**：命令面板执行 **`FitCode: 禁用`** → 重载窗口（从自动备份原样还原）。
-**状态**：命令面板执行 **`FitCode: 状态`**。
-**升级**：换上新版扩展目录后，直接执行一次 **`FitCode: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
+**Disable**: run **`FitCode: Disable`** → reload the window (restored verbatim from the automatic backup).
+**Status**: run **`FitCode: Show status`**.
+**Upgrade**: drop in the new extension folder and run **`FitCode: Enable`** once — a previously applied patch is restored from the backup first, then every patch is applied again from the new version.
 
-## 设置
+## Settings
 
-`FitCode: 启用 / 禁用` 决定补丁在不在，下面这些设置只在启用后起作用。改完 1~2 秒生效，不用重新启用，也不用重载窗口。
+`FitCode: Enable / Disable` controls whether the patch is in place; the settings below only matter while it is. Changes take effect in 1-2 seconds, no need to enable again or reload the window.
 
-| 设置 | 默认值 | 作用 | 关掉居中后 |
+| Setting | Default | Effect | With centering off |
 |---|---|---|---|
-| `fitcode.center` | `true` | 正文居中。关掉就回到原生布局 | — |
-| `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标所在行，多光标则每处都显示 | 照常工作 |
-| `fitcode.animate` | `true` | 切文件、改内容时宽度渐变 | 没有效果 |
-| `fitcode.animateDuration` | `140` | 渐变时长（ms），0 表示不渐变 | 没有效果 |
-| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） | 没有效果 |
-| `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） | 没有效果 |
-| `fitcode.cacheSize` | `300` | 每个文件缓存多少条宽度 | 没有效果 |
+| `fitcode.center` | `true` | Center the text. Turn it off to go back to the native layout | — |
+| `fitcode.lineNumbersOnlyAtCursor` | `true` | Show line numbers only on the cursor lines, all of them when there are several cursors | Keeps working |
+| `fitcode.animate` | `true` | Animate the width when switching files or when the content changes | No effect |
+| `fitcode.animateDuration` | `140` | Animation duration (ms), 0 means no animation | No effect |
+| `fitcode.minTextWidth` | `640` | Minimum text width (px) | No effect |
+| `fitcode.paddingRight` | `20` | Extra padding on the right of the text (px) | No effect |
+| `fitcode.cacheSize` | `300` | How many widths to cache per file | No effect |
 
-想省事的话，这三种配法直接抄：
+Three configurations worth copying:
 
-只要行号跟着光标，不要居中：
+Only the line numbers, no centering:
 
 ```json
 { "fitcode.center": false }
 ```
 
-要居中，行号保持原生：
+Centering with the native line numbers:
 
 ```json
 { "fitcode.lineNumbersOnlyAtCursor": false }
 ```
 
-要居中，不要动画：
+Centering without the animation:
 
 ```json
 { "fitcode.animate": false }
 ```
 
-原理：渲染层拿不到 VSCode 的设置 API，所以扩展把上述设置写进 `out/vs/workbench/fitcode.config.json`（启用/禁用时会创建/删除），渲染层每 2 秒、以及窗口聚焦时拉一次。手改这个 json 只写部分字段时，其余字段沿用当前值。
+How it works: the renderer has no access to the settings API, so the extension writes the settings above into `out/vs/workbench/fitcode.config.json` (created on enable, deleted on disable); the renderer polls it every 2 seconds and when the window gains focus. If you edit that json and only write some of the keys, the missing ones keep their current value.
 
-## 已知边界
+## Known limits
 
-- `editor.wordWrap` 开启的文件不居中（自动换行模式下无意义）
-- 编辑器面板宽度 < 400px 时不居中（窗口被缩成小方块时看起来就是"完全没生效"）
-- VSCode 升级后补丁锚点可能失配——扩展会检测并拒绝打补丁（不会损坏安装），需等适配新版本
-- 首次启用后 VSCode 可能提示"安装似乎损坏"——哈希校验的预期反应，点关闭即可
+- Files with `editor.wordWrap` enabled are not centered (centering is meaningless in wrapped mode)
+- Editor panels narrower than 400 px are not centered (a window shrunk to a small square looks like "not working at all")
+- A VS Code upgrade can break the patch anchors — the extension detects that and refuses to patch (it never damages the install); wait for support for the new version
+- After the first enable, VS Code may warn that the installation "appears to be corrupt" — the expected result of its checksum validation; just dismiss it
 
-## 开发
+## Development
 
-- `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
-- `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
-- `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
-- `docs/`：官网（`index.html` + `site.css` + `site.js`，GitHub Pages 从这里发）与 README 用的图（`switch.gif` 切文件动图，`layout.svg` 手画示意图）
-- `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
+- `src/extension.js`: extension logic — patching and restoring `workbench.html` / the bundle, the enable/disable commands
+- `media/inject.js`: the renderer script (column counting + writing the rulers carrier)
+- `package.nls*.json` + `l10n/`: strings. English is the source (and the fallback); every other language is one file per kind
+- `docs/`: the website (`index.html` + `site.css` + `site.js`, served by GitHub Pages) and the images used by the READMEs (`switch.gif` is a screen recording, `layout.svg` is hand-drawn)
+- `test/`: CDP-driven E2E (`e2e.mjs`), offline patch body generation (`patch-bundle.js`), live geometry diagnostics (`measure.mjs`); usage and the assertion table are in `test/README.md` (Chinese)
 
-### 补丁原理（`src/extension.js` 的 `patchBundle`）
+### How the patch works (`patchBundle` in `src/extension.js`)
 
-对 `workbench.desktop.main.js` 打四处补丁（各带唯一性断言，失配即放弃）：
+Four patches against `workbench.desktop.main.js` (each guarded by a uniqueness assertion; a mismatch aborts instead of guessing):
 
-1. `_createConfiguration`：把每个 CodeEditor 实例暴露到 `window.__ftEditors`
-2. `updateOptions`：兜底注册（配置变化等路径）
-3. `computeLayout` 头部：门控（wordWrap=off 且宽度≥400）+ 从 rulers 读取内缩量 `__ftP`；返回值里 glyphMargin/行号/装饰/contentLeft += `__ftP`、contentWidth −= 2×`__ftP`
-4. `EditorScrollbar._setLayout`：滚动条容器**左边不动**（`left = contentLeft`，正文位置就是这个容器的 left，动它会连正文一起挪走）、**宽度加 pad**（`width = contentWidth + pad (+minimapWidth)`），让容器右缘铺到编辑器最右，里面的竖滚动条 / overview ruler 自然贴右
+1. `_createConfiguration`: exposes every `CodeEditor` instance on `window.__ftEditors`
+2. `updateOptions`: fallback registration (config changes and similar paths)
+3. head of `computeLayout`: the gate (wordWrap=off and width ≥ 400) + reading the inset `__ftP` from rulers; in the return value glyphMargin / line numbers / decorations / contentLeft += `__ftP`, contentWidth −= 2×`__ftP`
+4. `EditorScrollbar._setLayout`: the scrollbar container's **left never moves** (`left = contentLeft`; the text position *is* this container's left, moving it would move the text too), and its **width gains the pad** (`width = contentWidth + pad (+minimapWidth)`), so the container's right edge reaches the editor's right edge and the vertical scrollbar / overview ruler inside it end up on the right
 
-> 为什么需要第 4 处：滚动条是 `contentLeft+contentWidth` 那个容器的子元素，第 3 处补丁把 `contentWidth` 缩小了 `2×pad`，滚动条于是"跟着正文居中"。第 4 处只把容器加宽 `pad`，正文位置不变。
+> Why patch 4 exists: the scrollbar is a child of the `contentLeft + contentWidth` container, and patch 3 shrinks `contentWidth` by `2×pad`, so the scrollbar "follows the text towards the center". Patch 4 only widens the container by `pad`, leaving the text position alone.
 
-每次打补丁前自动备份原文件为 `workbench.desktop.main.js.fitcode.bak`，禁用时原样还原。
-升级安装：换上新版扩展目录后执行一次 `FitCode: 启用` 即可——检测到旧版补丁痕迹会先从备份还原再按新版重打（备份丢了会明确报错，不会损坏安装）。
+The original file is backed up to `workbench.desktop.main.js.fitcode.bak` before patching and restored verbatim on disable.
+Upgrading: drop in the new extension folder and run `FitCode: Enable` once — traces of an older patch are restored from the backup first and the new patches are applied on top (a missing backup is reported explicitly; the install is never damaged).

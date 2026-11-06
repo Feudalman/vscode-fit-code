@@ -4,7 +4,7 @@
 
 VSCode 扩展 FitCode：让编辑器正文按内容宽度居中，滚动条与 minimap 留在编辑器最右。
 它通过修改 VSCode 安装目录实现（`workbench.desktop.main.js` 打补丁 + `workbench.html` 内联注入脚本），
-所以**任何改动都可能让用户的编辑器打不开**，先读 `README.md` 的「补丁原理」和 `test/README.md` 的「踩过的坑」。
+所以**任何改动都可能让用户的编辑器打不开**，先读 `README.zh-CN.md` 的「补丁原理」和 `test/README.md` 的「踩过的坑」。
 
 ## 目录
 

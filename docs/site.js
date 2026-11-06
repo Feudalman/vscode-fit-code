@@ -369,6 +369,7 @@
 
     "footer.license": "MIT licensed · maintained by Feudalman",
     "footer.docs": "Readme",
+    "footer.docsUrl": "https://github.com/Feudalman/vscode-fitcode/blob/main/README.md",
     "footer.theme": "Colour theme: dark-arui",
   };
 
@@ -387,6 +388,13 @@
       if (el.dataset.zhHtml === undefined) el.dataset.zhHtml = el.innerHTML;
       var value = lang === "zh" ? el.dataset.zhHtml : EN[el.dataset.i18n];
       if (value !== undefined) el.innerHTML = value;
+    });
+
+    document.querySelectorAll("[data-i18n-href]").forEach(function (el) {
+      var key = el.dataset.i18nHref;
+      if (el.dataset.zhHref === undefined) el.dataset.zhHref = el.getAttribute("href") || "";
+      var value = lang === "zh" ? el.dataset.zhHref : EN[key];
+      if (value) el.setAttribute("href", value);
     });
 
     document.querySelectorAll("[data-i18n-label]").forEach(function (el) {
