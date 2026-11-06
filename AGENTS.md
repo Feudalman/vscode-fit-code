@@ -2,7 +2,7 @@
 
 ## 项目
 
-VSCode 扩展 Center Editor：让编辑器正文按内容宽度居中，滚动条与 minimap 留在编辑器最右。
+VSCode 扩展 FitCode：让编辑器正文按内容宽度居中，滚动条与 minimap 留在编辑器最右。
 它通过修改 VSCode 安装目录实现（`workbench.desktop.main.js` 打补丁 + `workbench.html` 内联注入脚本），
 所以**任何改动都可能让用户的编辑器打不开**，先读 `README.md` 的「补丁原理」和 `test/README.md` 的「踩过的坑」。
 
@@ -37,7 +37,7 @@ E2E 需要先起隔离实例，步骤见 `test/README.md`。没有实例时，�
 
 ## 排查"改了没生效"
 
-按顺序看，别跳：窗口/编辑器面板是否 ≥ 400px（< 400px 按设计不居中和）→ `window.__ceLoaded === true` →
+按顺序看，别跳：窗口/编辑器面板是否 ≥ 400px（< 400px 按设计不居中和）→ `window.__ftLoaded === true` →
 `html` 里有没有残留 CSP meta → 编辑器 `getOption(117)` 的 rulers 是否有 pad →
 `.monaco-scrollable-element.editor-scrollable` 的 `left` 与 `width`。
 注意：CDP 里量到的窗口可能不是用户眼前的窗口，判断"看起来对不对"要用同一个 target 的 `Page.captureScreenshot`。

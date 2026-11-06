@@ -41,8 +41,8 @@ for (let i = 0; i < 60; i++) {
 }
 await sleep(4000); // 给扩展和注入足够的启动时间
 const out = await evaluate(`(() => {
-  const eds=[...(window.__ceEditors||[])].filter(e=>{try{const d=e.getDomNode();return d&&d.isConnected&&d.closest('.editor-group-container')}catch{return false}});
-  const ed=eds[0]; if(!ed) return {state:'no-editor', loaded:!!window.__ceLoaded, editors:window.__ceEditors?window.__ceEditors.size:0};
+  const eds=[...(window.__ftEditors||[])].filter(e=>{try{const d=e.getDomNode();return d&&d.isConnected&&d.closest('.editor-group-container')}catch{return false}});
+  const ed=eds[0]; if(!ed) return {state:'no-editor', loaded:!!window.__ftLoaded, editors:window.__ftEditors?window.__ftEditors.size:0};
   const li=ed.getLayoutInfo(), dom=ed.getDomNode();
   const dr=dom.getBoundingClientRect(), gr=dom.closest('.editor-group-container').getBoundingClientRect();
   const vl=dom.querySelector('.view-lines'), vr=vl.getBoundingClientRect();
@@ -52,7 +52,7 @@ const out = await evaluate(`(() => {
   let maxLen=0; if(model){const n=Math.min(model.getLineCount(),3000); for(let i=1;i<=n;i++){const L=model.getLineLength(i); if(L>maxLen)maxLen=L;}}
   return { file: model?.uri.path.split('/').pop(), 最长行字符: maxLen,
     信道: ch[0]||'无信道', maxContentWidth: ch[4]?+ch[4]:'未传',
-    pad: window.__cePad ? window.__cePad.left : null,
+    pad: window.__ftPad ? window.__ftPad.left : null,
     编辑器元素宽: Math.round(dr.width), 面板宽: Math.round(gr.width),
     外缝左: Math.round(dr.left-gr.left),
     contentLeft: li.contentLeft,

@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
-   Center Editor —— 渲染层（每编辑器独立自适应居中·rulers 载体）
+   FitCode —— 渲染层（每编辑器独立自适应居中·rulers 载体）
 
    协议：bundle 补丁的 computeLayout 从【本编辑器自己的 rulers 选项】
    （EditorOption 117，inject 通过 updateOptions({rulers:[{column:pad,
@@ -25,13 +25,13 @@
    --------------------------------------------------------------- */
 (function () {
 	'use strict';
-	if (window.__ceLoaded) return;
-	window.__ceLoaded = true;
+	if (window.__ftLoaded) return;
+	window.__ftLoaded = true;
 
 	// ---------- 配置 ----------
-	// 渲染层拿不到 VSCode 的设置 API，所以走一条文件通道：扩展把 centerEditor.* 写到
-	// bundle 旁边的 center-editor.config.json，这里定时（以及窗口聚焦时）拉取，准实时生效。
-	var CFG_REL = '../../../workbench/center-editor.config.json'; // 相对 workbench.html
+	// 渲染层拿不到 VSCode 的设置 API，所以走一条文件通道：扩展把 fitcode.* 写到
+	// bundle 旁边的 fitcode.config.json，这里定时（以及窗口聚焦时）拉取，准实时生效。
+	var CFG_REL = '../../../workbench/fitcode.config.json'; // 相对 workbench.html
 	var CFG_POLL_MS = 2000;
 	var DEFAULTS = {
 		center: true,               // 是否居中（false = 回归原生布局）
@@ -45,7 +45,7 @@
 	var cfg = {};
 	for (var dk in DEFAULTS) cfg[dk] = DEFAULTS[dk];
 
-	var STORE_KEY = 'ce.cols.v1';
+	var STORE_KEY = 'fitcode.cols.v1';
 	var LN_RENDER_ON = 1;            // Monaco RenderLineNumbersType.On
 
 	function clampNum(v, d, lo, hi) {
@@ -203,7 +203,7 @@
 	// 主编辑器 = 挂在编辑器组里的实例；chat 输入框等辅助编辑器不参与
 	function mainEditors() {
 		var out = [];
-		var set = window.__ceEditors;
+		var set = window.__ftEditors;
 		if (!set) return out;
 		set.forEach(function (ed) {
 			try {
@@ -243,18 +243,18 @@
 
 	// ---------- 渐变：只在“内容宽度变了”的场合临时挂过渡类，避免缩放面板时拖泥带水 ----------
 	function injectStyle(rebuild) {
-		var old = document.getElementById('ce-style');
+		var old = document.getElementById('ft-style');
 		if (old && !rebuild) return;
 		if (old) old.remove();
 		var s = document.createElement('style');
-		s.id = 'ce-style';
+		s.id = 'ft-style';
 		s.textContent =
-			'.monaco-editor.ce-anim .editor-scrollable,\n' +
-			'.monaco-editor.ce-anim .margin-view-overlays,\n' +
-			'.monaco-editor.ce-anim .glyph-margin,\n' +
-			'.monaco-editor.ce-anim .minimap,\n' +
-			'.monaco-editor.ce-anim .decorationsOverviewRuler,\n' +
-			'.monaco-editor.ce-anim .scrollbar.vertical' +
+			'.monaco-editor.ft-anim .editor-scrollable,\n' +
+			'.monaco-editor.ft-anim .margin-view-overlays,\n' +
+			'.monaco-editor.ft-anim .glyph-margin,\n' +
+			'.monaco-editor.ft-anim .minimap,\n' +
+			'.monaco-editor.ft-anim .decorationsOverviewRuler,\n' +
+			'.monaco-editor.ft-anim .scrollbar.vertical' +
 			' { transition: left ' + cfg.animateDuration + 'ms ease, width ' + cfg.animateDuration + 'ms ease; }';
 		try { document.head.appendChild(s); } catch (e) { /* ignore */ }
 	}
@@ -264,9 +264,9 @@
 		if (rulerPad(ed) === pad) return;
 		if (!cfg.animate || !animate || cfg.animateDuration <= 0) { setRuler(ed, pad); return; }
 		var dom;
-		try { dom = ed.getDomNode(); dom.classList.add('ce-anim'); } catch (e) { setRuler(ed, pad); return; }
+		try { dom = ed.getDomNode(); dom.classList.add('ft-anim'); } catch (e) { setRuler(ed, pad); return; }
 		setRuler(ed, pad);
-		setTimeout(function () { try { dom.classList.remove('ce-anim'); } catch (e) { /* ignore */ } }, cfg.animateDuration + 60);
+		setTimeout(function () { try { dom.classList.remove('ft-anim'); } catch (e) { /* ignore */ } }, cfg.animateDuration + 60);
 	}
 
 	// ---------- 事件驱动：切文件 / 改内容 / 改布局都立刻重算 ----------

@@ -1,4 +1,4 @@
-# Center Editor
+# FitCode
 
 让 VSCode 的编辑器像 JetBrains 那样：**正文宽度自适应内容**——内容窄时编辑区居中，内容超出面板时自动撑满并横向滚动。行号跟随正文一起缩进，tab 栏永远满宽，**滚动条与 minimap 始终钉在编辑器右边缘**。
 
@@ -30,13 +30,13 @@
 - `workbench.desktop.main.js`：4 处锚点补丁
 - `workbench.html`：插入内联注入脚本（并把 CSP meta 挪进 base64 注释）
 
-1. 将本目录拷贝到 `~/.vscode/extensions/local.center-editor-<package.json 里的 version>/`
-2. 重载窗口后，命令面板执行 **`Center Editor: 启用`** → 按提示重载窗口
+1. 将本目录拷贝到 `~/.vscode/extensions/local.fitcode-<package.json 里的 version>/`
+2. 重载窗口后，命令面板执行 **`FitCode: 启用`** → 按提示重载窗口
 3. 完成——打开窄文件会居中，宽文件自动撑满
 
-**停用**：命令面板执行 **`Center Editor: 禁用`** → 重载窗口（从自动备份原样还原）。
-**状态**：命令面板执行 **`Center Editor: 状态`**。
-**升级**：换上新版扩展目录后，直接执行一次 **`Center Editor: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
+**停用**：命令面板执行 **`FitCode: 禁用`** → 重载窗口（从自动备份原样还原）。
+**状态**：命令面板执行 **`FitCode: 状态`**。
+**升级**：换上新版扩展目录后，直接执行一次 **`FitCode: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
 
 ## 设置
 
@@ -44,15 +44,15 @@
 
 | 设置 | 默认 | 作用 |
 |---|---|---|
-| `centerEditor.center` | `true` | 正文居中。关掉即回归原生布局 |
-| `centerEditor.minTextWidth` | `640` | 正文最小宽度（px） |
-| `centerEditor.paddingRight` | `20` | 正文右侧额外留白（px） |
-| `centerEditor.animate` | `true` | 切换文件/内容变化时宽度渐变 |
-| `centerEditor.animateDuration` | `140` | 渐变时长（ms），0 = 不渐变 |
-| `centerEditor.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标行 |
-| `centerEditor.cacheSize` | `300` | 每文件宽度缓存条数上限 |
+| `fitcode.center` | `true` | 正文居中。关掉即回归原生布局 |
+| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） |
+| `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） |
+| `fitcode.animate` | `true` | 切换文件/内容变化时宽度渐变 |
+| `fitcode.animateDuration` | `140` | 渐变时长（ms），0 = 不渐变 |
+| `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标行 |
+| `fitcode.cacheSize` | `300` | 每文件宽度缓存条数上限 |
 
-原理：渲染层拿不到 VSCode 的设置 API，所以扩展把上述设置写进 `out/vs/workbench/center-editor.config.json`（启用/禁用时会创建/删除），渲染层每 2 秒、以及窗口聚焦时拉一次。手改这个 json 只写部分字段时，其余字段沿用当前值。
+原理：渲染层拿不到 VSCode 的设置 API，所以扩展把上述设置写进 `out/vs/workbench/fitcode.config.json`（启用/禁用时会创建/删除），渲染层每 2 秒、以及窗口聚焦时拉一次。手改这个 json 只写部分字段时，其余字段沿用当前值。
 
 ## 已知边界
 
@@ -71,12 +71,12 @@
 
 对 `workbench.desktop.main.js` 打四处补丁（各带唯一性断言，失配即放弃）：
 
-1. `_createConfiguration`：把每个 CodeEditor 实例暴露到 `window.__ceEditors`
+1. `_createConfiguration`：把每个 CodeEditor 实例暴露到 `window.__ftEditors`
 2. `updateOptions`：兜底注册（配置变化等路径）
-3. `computeLayout` 头部：门控（wordWrap=off 且宽度≥400）+ 从 rulers 读取内缩量 `__ceP`；返回值里 glyphMargin/行号/装饰/contentLeft += `__ceP`、contentWidth −= 2×`__ceP`
+3. `computeLayout` 头部：门控（wordWrap=off 且宽度≥400）+ 从 rulers 读取内缩量 `__ftP`；返回值里 glyphMargin/行号/装饰/contentLeft += `__ftP`、contentWidth −= 2×`__ftP`
 4. `EditorScrollbar._setLayout`：滚动条容器**左边不动**（`left = contentLeft`，正文位置就是这个容器的 left，动它会连正文一起挪走）、**宽度加 pad**（`width = contentWidth + pad (+minimapWidth)`），让容器右缘铺到编辑器最右，里面的竖滚动条 / overview ruler 自然贴右
 
 > 为什么需要第 4 处：滚动条是 `contentLeft+contentWidth` 那个容器的子元素，第 3 处补丁把 `contentWidth` 缩小了 `2×pad`，滚动条于是"跟着正文居中"。第 4 处只把容器加宽 `pad`，正文位置不变。
 
-每次打补丁前自动备份原文件为 `workbench.desktop.main.js.center-editor.bak`，禁用时原样还原。
-升级安装：换上新版扩展目录后执行一次 `Center Editor: 启用` 即可——检测到旧版补丁痕迹会先从备份还原再按新版重打（备份丢了会明确报错，不会损坏安装）。
+每次打补丁前自动备份原文件为 `workbench.desktop.main.js.fitcode.bak`，禁用时原样还原。
+升级安装：换上新版扩展目录后执行一次 `FitCode: 启用` 即可——检测到旧版补丁痕迹会先从备份还原再按新版重打（备份丢了会明确报错，不会损坏安装）。

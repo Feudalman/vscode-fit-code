@@ -47,7 +47,7 @@ await send('Fetch.enable', { patterns: [{ urlPattern: '*workbench.desktop.main.j
 console.log('补丁体 + inject.js 已武装，reload…');
 await send('Page.reload', { ignoreCache: true });
 for (let i = 0; i < 60; i++) { await sleep(500); if (await evaluate(`!!document.querySelector('.monaco-editor')`, 'ready').catch(() => false)) break; }
-for (let i = 0; i < 30; i++) { await sleep(500); if (await evaluate(`!!window.__ceLoaded`, 'inj').catch(() => false)) break; }
+for (let i = 0; i < 30; i++) { await sleep(500); if (await evaluate(`!!window.__ftLoaded`, 'inj').catch(() => false)) break; }
 console.log('ready（inject.js 已加载）');
 // 触碰 AUTO_SPLIT 标记：若分屏丢失，开发扩展监视器会在几秒内补分屏（标记被消费后会删掉，故每轮重写）
 for (let i = 0; i < 30; i++) {
@@ -75,7 +75,7 @@ const clickTab = async (tabName, groupIdx = 0) => {
 // 量几何：内缩量 = contentLeft − 原生 gutter；居中 ⇔ 左右内缩相等（与面板宽无关，不写死像素）
 const M = `(() => {
   const groups = [...document.querySelectorAll('.editor-group-container')];
-  const eds = [...(window.__ceEditors||[])].filter(e => { try { const d = e.getDomNode(); return d && d.isConnected && d.closest('.editor-group-container'); } catch { return false; } });
+  const eds = [...(window.__ftEditors||[])].filter(e => { try { const d = e.getDomNode(); return d && d.isConnected && d.closest('.editor-group-container'); } catch { return false; } });
   return groups.map((g, gi) => {
     const ed = eds.find(e => { try { return e.getDomNode().closest('.editor-group-container') === g; } catch { return false; } });
     if (!ed) return { gi, empty: true };

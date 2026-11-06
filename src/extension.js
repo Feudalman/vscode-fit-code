@@ -2,9 +2,16 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 
-const START = '<!-- !! CENTER-EDITOR-START !! -->';
-const END = '<!-- !! CENTER-EDITOR-END !! -->';
-const CSP_COMMENT = /<!-- !! CENTER-EDITOR-CSP ([A-Za-z0-9+/=]*) !! -->/;
+const START = '<!-- !! FITCODE-START !! -->';
+const END = '<!-- !! FITCODE-END !! -->';
+const CSP_COMMENT = /<!-- !! FITCODE-CSP ([A-Za-z0-9+/=]*) !! -->/;
+// 旧名字（Center Editor 时代）留下的痕迹：只用于识别、清理、迁移，不要删
+const LEGACY_START = '<!-- !! CENTER-EDITOR-START !! -->';
+const LEGACY_END = '<!-- !! CENTER-EDITOR-END !! -->';
+const LEGACY_CSP_COMMENT = /<!-- !! CENTER-EDITOR-CSP ([A-Za-z0-9+/=]*) !! -->/;
+const LEGACY_BAK_SUFFIX = '.center-editor.bak';
+const LEGACY_CONFIG_FILE = 'center-editor.config.json';
+const LEGACY_INJECT_FILE = 'center-editor.inject.js';
 const CSP_META = /<meta\s+http-equiv="Content-Security-Policy"[\s\S]*?\/>/;
 const OTHER_BLOCK = /<!-- !! VSCODE-CUSTOM-CSS-START !! -->[\s\S]*?<!-- !! VSCODE-CUSTOM-CSS-END !! -->\n*/;
 const OTHER_SESSION = /<!-- !! VSCODE-CUSTOM-CSS-SESSION-ID [\w-]+ !! -->\n*/g;
@@ -12,33 +19,35 @@ const OTHER_SESSION = /<!-- !! VSCODE-CUSTOM-CSS-SESSION-ID [\w-]+ !! -->\n*/g;
 // workbench.desktop.main.js 里给 CodeEditorWidget 的工厂方法加一行，把 editor 实例暴露给渲染层
 // 原样（压缩后）：_createConfiguration(e,t,i,n){return new ode(e,t,i,this._domElement,n)}
 const BUNDLE_ANCHOR = /_createConfiguration\((\w+),(\w+),(\w+),(\w+)\)\{return new ([\w$]+)\(\1,\2,\3,this\._domElement,\4\)\}/;
-const BUNDLE_MARKER = '__ceEditors';
-const BUNDLE_FLAG = 'window.__ceBundlePatched=1;';
+const BUNDLE_MARKER = '__ftEditors';
+const BUNDLE_FLAG = 'window.__ftBundlePatched=1;';
 // 历史方案（已废弃）：把注入脚本作为外部 <script> 从 bundle 里加载——
 // CSP 带 require-trusted-types-for 'script'，字符串赋给 script.src 会被 TrustedScriptURL 拦掉。
 // 现在注入仍走 workbench.html 内联（因此 html 必须去掉 CSP meta，原文以 base64 注释留档）。
 const LEGACY_LOADER = 'var __ceLoader=document.createElement';
 // 兜底锚点：updateOptions 一定会被调用（配置变化 / 切语言等）
 const BUNDLE_ANCHOR2 = /updateOptions\((\w+)\)\{this\._configuration\.updateOptions\(\1\|\|\{\}\)\}/;
-// 第三处：门控(__ceGate) + 读本编辑器自己的 rulers（EditorOption 117，inject.js 写入），
-// 返回值里按【本编辑器自己的宽度】独立计算内缩量 __ceP 并应用到
-// glyphMargin/行号/装饰/contentLeft（+__ceP）、contentWidth（-2*__ceP）。minimap 保持原生位置。
+// 第三处：门控(__ftGate) + 读本编辑器自己的 rulers（EditorOption 117，inject.js 写入），
+// 返回值里按【本编辑器自己的宽度】独立计算内缩量 __ftP 并应用到
+// glyphMargin/行号/装饰/contentLeft（+__ftP）、contentWidth（-2*__ftP）。minimap 保持原生位置。
 const BUNDLE_ANCHOR3 = /computeLayout\((\w+),(\w+)\)\{let (\w+)=\2\.outerWidth\|0/;
 const BUNDLE_ANCHOR3R = /\{width:(\w+),height:(\w+),glyphMarginLeft:(\w+),glyphMarginWidth:(\w+),glyphMarginDecorationLaneCount:([\w$.]+),lineNumbersLeft:(\w+),lineNumbersWidth:(\w+),decorationsLeft:(\w+),decorationsWidth:(\w+),contentLeft:(\w+),contentWidth:(\w+),minimap:(\w+)/;
-const BUNDLE_MARKER3 = '__ceGate';
+const BUNDLE_MARKER3 = '__ftGate';
 // 第四处（滚动条/minimap 钉右）：EditorScrollbar 的容器就是【正文所在的容器】——
 // lines-content、decorationsOverviewRuler、竖滚动条都是它的子元素，正文位置 = 它的 left。
 // 补丁3 缩小 contentWidth 后，这个容器右边缘左移 pad → 滚动条跟着正文居中。
 // 所以：left 绝对不能动（动它正文会一起左移），只把 width 加 pad，让右边缘铺回编辑器最右。
 const BUNDLE_ANCHOR4 = /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
-const BUNDLE_MARKER4 = '__ceSb';
-// 渲染层读不到 VSCode 的设置，所以扩展把 centerEditor.* 写成 json 放在 bundle 旁边，
+const BUNDLE_MARKER4 = '__ftSb';
+// 渲染层读不到 VSCode 的设置，所以扩展把 fitcode.* 写成 json 放在 bundle 旁边，
 // 渲染层（media/inject.js）定时拉取 → 改设置 1~2 秒内生效，不用重跑「启用」。
-const RUNTIME_CONFIG_FILE = 'center-editor.config.json';
+const RUNTIME_CONFIG_FILE = 'fitcode.config.json';
 // 历史补丁痕迹（旧版在返回值上做内缩）：检测到则从备份还原后重打
 const BUNDLE_LEGACY = /contentLeft:\(__ceCE\?|__ceCE2|__ceCE4/;
 // 旧补丁（minimap 跟随内容左移 / 滚动条未钉右缘）→ 也从备份还原后按当前版本重打
 const BUNDLE_LEGACY_V5 = /minimapLeft=l\.minimapLeft-__ceP/;
+// 旧名字的补丁标记：出现任意一个就说明是旧版打的补丁
+const LEGACY_BUNDLE_MARKS = ['__ceEditors', '__ceGate', '__ceSb', '__ceBundlePatched'];
 const bundlePathFor = (htmlPath) =>
 	path.resolve(path.dirname(htmlPath), '..', '..', '..', 'workbench', 'workbench.desktop.main.js');
 
@@ -119,7 +128,7 @@ function locateWorkbenchHtml() {
 	return null;
 }
 
-const backupPathFor = (htmlPath) => htmlPath + '.center-editor.bak';
+const backupPathFor = (htmlPath) => htmlPath + '.fitcode.bak';
 
 function escapeRe(s) {
 	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -127,9 +136,20 @@ function escapeRe(s) {
 
 function stripPatch(html) {
 	let out = html.replace(new RegExp(`${escapeRe(START)}[\\s\\S]*?${escapeRe(END)}\\n*`), '');
-	const m = out.match(CSP_COMMENT);
+	out = out.replace(new RegExp(`${escapeRe(LEGACY_START)}[\\s\\S]*?${escapeRe(LEGACY_END)}\\n*`), '');
+	let m = out.match(CSP_COMMENT);
 	if (m) out = out.replace(CSP_COMMENT, Buffer.from(m[1], 'base64').toString('utf8'));
+	m = out.match(LEGACY_CSP_COMMENT);
+	if (m) out = out.replace(LEGACY_CSP_COMMENT, Buffer.from(m[1], 'base64').toString('utf8'));
 	return out;
+}
+
+// 旧名字的 .bak 迁移成新名字（只在新备份不存在时），这样老安装也能安全还原/重打
+function migrateLegacyBackup(target) {
+	const legacy = target.replace(/\.fitcode\.bak$/, LEGACY_BAK_SUFFIX);
+	try {
+		if (!fs.existsSync(target) && fs.existsSync(legacy)) fs.renameSync(legacy, target);
+	} catch (e) { /* ignore */ }
 }
 
 // 老版本（或别的插件）可能已经把 CSP 拆掉了，从同目录的备份文件里找回原始 CSP
@@ -137,7 +157,7 @@ function recoverCsp(htmlPath) {
 	try {
 		const dir = path.dirname(htmlPath);
 		for (const f of fs.readdirSync(dir)) {
-			if (!f.endsWith('.bak-custom-css') && !f.endsWith('.center-editor.bak')) continue;
+			if (!f.endsWith('.bak-custom-css') && !f.endsWith('.fitcode.bak') && !f.endsWith(LEGACY_BAK_SUFFIX)) continue;
 			const m = fs.readFileSync(path.join(dir, f), 'utf8').match(CSP_META);
 			if (m) return m[0];
 		}
@@ -151,15 +171,18 @@ async function patchBundle(htmlPath) {
 	const bundle = bundlePathFor(htmlPath);
 	if (!fs.existsSync(bundle)) return { ok: false, error: '找不到 workbench.desktop.main.js' };
 	let src = await fs.promises.readFile(bundle, 'utf8');
-	const bak = bundle + '.center-editor.bak';
-	// 检测到任何旧版补丁痕迹 → 先从备份还原成干净体再重打，避免新旧补丁叠加
-	if (BUNDLE_LEGACY.test(src) || BUNDLE_LEGACY_V5.test(src) || src.includes(LEGACY_LOADER)) {
+	const bak = bundle + '.fitcode.bak';
+	migrateLegacyBackup(bak);
+	// 检测到任何旧版补丁痕迹（旧名字的标记 / 老版本做法）→ 先从备份还原成干净体再重打
+	const looksLegacy = BUNDLE_LEGACY.test(src) || BUNDLE_LEGACY_V5.test(src) || src.includes(LEGACY_LOADER)
+		|| LEGACY_BUNDLE_MARKS.some((m) => src.includes(m));
+	if (looksLegacy) {
 		if (!fs.existsSync(bak)) return { ok: false, error: '检测到旧版补丁但没有备份，无法安全升级，请手动还原 bundle' };
 		src = await fs.promises.readFile(bak, 'utf8');
 	}
 	if (!fs.existsSync(bak)) await fs.promises.writeFile(bak, src, 'utf8');
 
-	const reg = '(window.__ceEditors||(window.__ceEditors=new Set)).add(this)';
+	const reg = '(window.__ftEditors||(window.__ftEditors=new Set)).add(this)';
 	let changed = false;
 
 	if (!src.includes(BUNDLE_MARKER)) {
@@ -167,7 +190,7 @@ async function patchBundle(htmlPath) {
 		if (hits.length !== 1) return { ok: false, error: `锚点1匹配 ${hits.length} 处` };
 		src = src.replace(
 			BUNDLE_ANCHOR,
-			'_createConfiguration($1,$2,$3,$4){var __ce=new $5($1,$2,$3,this._domElement,$4);' + reg + ';return __ce}'
+			'_createConfiguration($1,$2,$3,$4){var __ft=new $5($1,$2,$3,this._domElement,$4);' + reg + ';return __ft}'
 		);
 		changed = true;
 	}
@@ -180,27 +203,27 @@ async function patchBundle(htmlPath) {
 		src = BUNDLE_FLAG + src;
 		changed = true;
 	}
-	if (!src.includes(';return __ce}')) return { ok: false, error: '补丁自检失败：return 后缺少右花括号' };
+	if (!src.includes(';return __ft}')) return { ok: false, error: '补丁自检失败：return 后缺少右花括号' };
 	if (!src.includes(BUNDLE_MARKER3)) {
 		const hits3 = src.match(new RegExp(BUNDLE_ANCHOR3.source, 'g')) || [];
 		if (hits3.length !== 1) return { ok: false, error: `锚点3头 匹配 ${hits3.length} 处` };
 		src = src.replace(
 			BUNDLE_ANCHOR3,
 			'computeLayout($1,$2){' +
-				'var __ceGate=(function(){var w=$1.get(156);w=w==="inherit"?$1.get(155):w;' +
+				'var __ftGate=(function(){var w=$1.get(156);w=w==="inherit"?$1.get(155):w;' +
 				'w=w==="inherit"?$1.get(151):w;return w==="off"&&$2.outerWidth>=400})();' +
-				'var __ceK=$1.get(117)||[];' +
-				'var __ceP=(__ceGate&&__ceK.length&&typeof __ceK[0].column==="number")?__ceK[0].column:0;' +
+				'var __ftK=$1.get(117)||[];' +
+				'var __ftP=(__ftGate&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
 				'let $3=$2.outerWidth|0'
 		);
 		const hits3r = src.match(new RegExp(BUNDLE_ANCHOR3R.source, 'g')) || [];
 		if (hits3r.length !== 1) return { ok: false, error: `锚点3返回 匹配 ${hits3r.length} 处` };
 		src = src.replace(
 			BUNDLE_ANCHOR3R,
-			'{width:$1,height:$2,glyphMarginLeft:$3+__ceP,glyphMarginWidth:$4,glyphMarginDecorationLaneCount:$5,' +
-				'lineNumbersLeft:$6+__ceP,lineNumbersWidth:$7,decorationsLeft:$8+__ceP,decorationsWidth:$9,' +
+			'{width:$1,height:$2,glyphMarginLeft:$3+__ftP,glyphMarginWidth:$4,glyphMarginDecorationLaneCount:$5,' +
+				'lineNumbersLeft:$6+__ftP,lineNumbersWidth:$7,decorationsLeft:$8+__ftP,decorationsWidth:$9,' +
 				// minimap 不跟内容左移：右侧 UI 全部钉在右边缘，只有正文/行号居中
-				'contentLeft:$10+__ceP,contentWidth:Math.max(1,$11-2*__ceP),minimap:$12'
+				'contentLeft:$10+__ftP,contentWidth:Math.max(1,$11-2*__ftP),minimap:$12'
 		);
 		changed = true;
 	}
@@ -211,14 +234,14 @@ async function patchBundle(htmlPath) {
 			BUNDLE_ANCHOR4,
 			'_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);' +
 				// 与补丁3 同一门控：wordWrap=off 且宽度≥400 时才认 rulers 里的内缩量
-				'var __ceW=$1.get(156);__ceW=__ceW==="inherit"?$1.get(155):__ceW;' +
-				'__ceW=__ceW==="inherit"?$1.get(151):__ceW;' +
-				'var __ceK=$1.get(117)||[];' +
-				'var __ceSb=(__ceW==="off"&&$2.width>=400&&__ceK.length&&typeof __ceK[0].column==="number")?__ceK[0].column:0;' +
+				'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
+				'__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
+				'var __ftK=$1.get(117)||[];' +
+				'var __ftSb=(__ftW==="off"&&$2.width>=400&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
 				// 左边界不动：正文位置 = 容器 left，动它就等于把正文一起挪走（曾经踩过）
 				'this.scrollbarDomNode.setLeft($2.contentLeft),' +
-				'$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ceSb+$2.minimap.minimapWidth)' +
-				':this.scrollbarDomNode.setWidth($2.contentWidth+__ceSb),' +
+				'$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +
+				':this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb),' +
 				'this.scrollbarDomNode.setHeight($2.height)}'
 		);
 		changed = true;
@@ -229,9 +252,11 @@ async function patchBundle(htmlPath) {
 
 async function unpatchBundle(htmlPath) {
 	const bundle = bundlePathFor(htmlPath);
-	const bak = bundle + '.center-editor.bak';
+	const bak = bundle + '.fitcode.bak';
 	// 清掉历史方案遗留的外部注入脚本 + 运行时配置，再还原 bundle
-	try { fs.unlinkSync(path.join(path.dirname(bundle), 'center-editor.inject.js')); } catch (e) { /* ignore */ }
+	try { fs.unlinkSync(path.join(path.dirname(bundle), 'fitcode.inject.js')); } catch (e) { /* ignore */ }
+	try { fs.unlinkSync(path.join(path.dirname(bundle), LEGACY_INJECT_FILE)); } catch (e) { /* ignore */ }
+	try { fs.unlinkSync(path.join(path.dirname(bundle), LEGACY_CONFIG_FILE)); } catch (e) { /* ignore */ }
 	try { fs.unlinkSync(path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE)); } catch (e) { /* ignore */ }
 	if (fs.existsSync(bak)) {
 		await fs.promises.copyFile(bak, bundle);
@@ -241,9 +266,9 @@ async function unpatchBundle(htmlPath) {
 	return false;
 }
 
-// 把 centerEditor.* 设置落成渲染层可读的 json（仅当 bundle 已打补丁时才写）
+// 把 fitcode.* 设置落成渲染层可读的 json（仅当 bundle 已打补丁时才写）
 function runtimeConfig() {
-	const c = vscode.workspace.getConfiguration('centerEditor');
+	const c = vscode.workspace.getConfiguration('fitcode');
 	const num = (k, d, lo, hi) => {
 		const v = c.get(k);
 		const n = typeof v === 'number' && isFinite(v) ? v : d;
@@ -272,6 +297,7 @@ async function writeRuntimeConfig(htmlPath) {
 		const src = await fs.promises.readFile(bundle, 'utf8');
 		if (!src.includes(BUNDLE_MARKER)) return false; // 没打补丁就不留文件
 		await fs.promises.writeFile(path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE), JSON.stringify(runtimeConfig()), 'utf8');
+		try { fs.unlinkSync(path.join(path.dirname(bundle), LEGACY_CONFIG_FILE)); } catch (e) { /* ignore */ }
 		return true;
 	} catch (e) {
 		return false;
@@ -281,11 +307,12 @@ async function writeRuntimeConfig(htmlPath) {
 async function cmdEnable() {
 	const htmlPath = locateWorkbenchHtml();
 	if (!htmlPath) {
-		vscode.window.showErrorMessage('Center Editor: 找不到 workbench.html');
+		vscode.window.showErrorMessage('FitCode: 找不到 workbench.html');
 		return;
 	}
 	let html = await fs.promises.readFile(htmlPath, 'utf8');
 	const bak = backupPathFor(htmlPath);
+	migrateLegacyBackup(bak); // 旧名字（Center Editor 时代）的 html 备份先改名过来
 	const cspInFile = html.match(CSP_META);
 	const recoveredCsp = cspInFile ? cspInFile[0] : recoverCsp(htmlPath);
 
@@ -312,27 +339,27 @@ async function cmdEnable() {
 	const cspAfter = html.match(CSP_META);
 	const csp = cspAfter ? cspAfter[0] : recoveredCsp;
 	html = html.replace(new RegExp(CSP_META.source, 'g'), '');
-	const savedCsp = csp ? `<!-- !! CENTER-EDITOR-CSP ${Buffer.from(csp, 'utf8').toString('base64')} !! -->\n` : '';
+	const savedCsp = csp ? `<!-- !! FITCODE-CSP ${Buffer.from(csp, 'utf8').toString('base64')} !! -->\n` : '';
 
 	const block = `${savedCsp}${START}\n<script>${asset('inject.js')}</script>\n${END}\n</head>`;
 	html = html.replace('</head>', block);
 
 	const bp = await patchBundle(htmlPath);
 	if (!bp.ok) {
-		vscode.window.showErrorMessage('Center Editor: ' + bp.error);
+		vscode.window.showErrorMessage('FitCode: ' + bp.error);
 		return;
 	}
 	try {
 		await fs.promises.writeFile(htmlPath, html, 'utf8');
 	} catch (e) {
-		vscode.window.showErrorMessage('Center Editor: 写入失败（权限不足？）' + e.message);
+		vscode.window.showErrorMessage('FitCode: 写入失败（权限不足？）' + e.message);
 		return;
 	}
 	await writeRuntimeConfig(htmlPath);
 	try {
-		await vscode.workspace.getConfiguration('centerEditor').update('enabled', true, vscode.ConfigurationTarget.Global);
+		await vscode.workspace.getConfiguration('fitcode').update('enabled', true, vscode.ConfigurationTarget.Global);
 	} catch (e) { /* ignore */ }
-	const msg = 'Center Editor 已写入，需要重载窗口生效。' + (removedOther ? '（已清除之前 Custom CSS 的注入）' : '');
+	const msg = 'FitCode 已写入，需要重载窗口生效。' + (removedOther ? '（已清除之前 Custom CSS 的注入）' : '');
 	const pick = await vscode.window.showInformationMessage(msg, '重载窗口');
 	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
 }
@@ -351,9 +378,9 @@ async function cmdDisable() {
 	}
 	await unpatchBundle(htmlPath);
 	try {
-		await vscode.workspace.getConfiguration('centerEditor').update('enabled', false, vscode.ConfigurationTarget.Global);
+		await vscode.workspace.getConfiguration('fitcode').update('enabled', false, vscode.ConfigurationTarget.Global);
 	} catch (e) { /* ignore */ }
-	const pick = await vscode.window.showInformationMessage('Center Editor 已还原，需重载窗口。', '重载窗口');
+	const pick = await vscode.window.showInformationMessage('FitCode 已还原，需重载窗口。', '重载窗口');
 	if (pick === '重载窗口') vscode.commands.executeCommand('workbench.action.reloadWindow');
 }
 
@@ -368,12 +395,12 @@ async function cmdStatus() {
 		`滚动条/minimap 钉右: ${bundleSrc.includes(BUNDLE_MARKER4) ? '是' : '否'}`,
 		`html 内联注入块: ${html.includes(START) ? '有' : '无'}`,
 		`html 里残留 CSP meta: ${(html.match(new RegExp(CSP_META.source, 'g')) || []).length}`,
-		`bundle 备份: ${bundle && fs.existsSync(bundle + '.center-editor.bak') ? '有' : '无'}`,
+		`bundle 备份: ${bundle && fs.existsSync(bundle + '.fitcode.bak') ? '有' : '无'}`,
 		`运行时配置: ${(() => { try { const f = path.join(path.dirname(bundle), RUNTIME_CONFIG_FILE); return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '缺失（点一次「启用」）'; } catch (e) { return '读取失败'; } })()}`,
 		`当前文件最长行: ${cols || '-'} 列`,
 		`workbench.html: ${htmlPath || '未找到'}`,
 	];
-	vscode.window.showInformationMessage('Center Editor — ' + lines.join('\n'), { modal: true });
+	vscode.window.showInformationMessage('FitCode — ' + lines.join('\n'), { modal: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -399,7 +426,7 @@ function activate(context) {
 	try {
 		context.subscriptions.push(
 			vscode.workspace.onDidChangeConfiguration((e) => {
-				if (!e.affectsConfiguration('centerEditor')) return;
+				if (!e.affectsConfiguration('fitcode')) return;
 				try {
 					const hp = locateWorkbenchHtml();
 					if (hp) writeRuntimeConfig(hp).catch(() => {});
@@ -408,9 +435,9 @@ function activate(context) {
 		);
 	} catch (e) { /* ignore */ }
 
-	context.subscriptions.push(vscode.commands.registerCommand('centerEditor.enable', cmdEnable));
-	context.subscriptions.push(vscode.commands.registerCommand('centerEditor.disable', cmdDisable));
-	context.subscriptions.push(vscode.commands.registerCommand('centerEditor.status', cmdStatus));
+	context.subscriptions.push(vscode.commands.registerCommand('fitcode.enable', cmdEnable));
+	context.subscriptions.push(vscode.commands.registerCommand('fitcode.disable', cmdDisable));
+	context.subscriptions.push(vscode.commands.registerCommand('fitcode.status', cmdStatus));
 }
 
 function deactivate() {}
