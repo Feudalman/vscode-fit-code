@@ -84,6 +84,7 @@ const stub = {
 		tabGroups: { all: [] },
 		showInformationMessage: async (msg) => { console.log(msg); return undefined; },
 		showErrorMessage: async (msg) => { console.error('ERROR: ' + msg); return undefined; },
+		showWarningMessage: async (msg) => { console.warn('WARN: ' + msg); return undefined; },
 	},
 	commands: {
 		_cmds: {},

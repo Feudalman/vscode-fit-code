@@ -308,6 +308,38 @@ async function writeRuntimeConfig(htmlPath) {
 	}
 }
 
+function isBundlePatched(htmlPath) {
+	try {
+		const bundle = bundlePathFor(htmlPath);
+		if (!fs.existsSync(bundle)) return false;
+		return fs.readFileSync(bundle, 'utf8').includes(BUNDLE_MARKER);
+	} catch (e) {
+		return false;
+	}
+}
+
+// VSCode 更新会整包替换安装目录，补丁（和备份）一起没。启动时发现"装过但现在没补丁"
+// 就提醒一次，并给一个直接重新启用的按钮。
+async function checkPatchAlive() {
+	const htmlPath = locateWorkbenchHtml();
+	if (!htmlPath) return;
+	let wanted = false;
+	try {
+		wanted = vscode.workspace.getConfiguration('fitcode').get('enabled') === true;
+	} catch (e) {
+		return;
+	}
+	if (!wanted || isBundlePatched(htmlPath)) return;
+	const pick = await vscode.window.showWarningMessage(
+		'FitCode 补丁已失效（VSCode 更新会替换安装目录），需要重新启用一次。',
+		'重新启用',
+		'暂时不用'
+	);
+	if (pick === '重新启用') {
+		try { await vscode.commands.executeCommand('fitcode.enable'); } catch (e) { /* ignore */ }
+	}
+}
+
 async function cmdEnable() {
 	const htmlPath = locateWorkbenchHtml();
 	if (!htmlPath) {
@@ -442,6 +474,9 @@ function activate(context) {
 	context.subscriptions.push(vscode.commands.registerCommand('fitcode.enable', cmdEnable));
 	context.subscriptions.push(vscode.commands.registerCommand('fitcode.disable', cmdDisable));
 	context.subscriptions.push(vscode.commands.registerCommand('fitcode.status', cmdStatus));
+
+	// 启动后稍等一下再查（避开启动期的通知高峰）
+	setTimeout(() => { checkPatchAlive().catch(() => {}); }, 2500);
 }
 
 function deactivate() {}

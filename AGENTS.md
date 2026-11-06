@@ -37,6 +37,7 @@ node test/apply.cjs status      # 查安装态 + 运行时配置
 - 干净 bundle 的来源：安装目录里的 `<bundle>.fitcode.bak`（禁用后天然是干净体），或从 `VSCode.app/Contents/Resources/app/out/vs/workbench/` 直接复制
 - 应用/还原后必须让 VSCode **重载窗口**（`open -a` 重启也算）才生效
 - 判断"看起来对不对"必须看真机：先把窗口拉到 ≥800px（面板 <400px 按设计不居中），必要时 `screencapture -R` 抓窗口区域；单独起 `Code --user-data-dir=/tmp/xxx --remote-debugging-port=…` 的隔离实例可以只做几何测量
+- VSCode 自身更新会替换整个 app 目录（bundle、html、备份全没）。扩展启动 2.5s 后会检查「设置里 enabled=true 但 bundle 没补丁」并弹通知（`checkPatchAlive`），这条路径只能改代码验逻辑，实际弹窗要在真机看
 - 排查顺序见下节
 
 ## 硬约束
