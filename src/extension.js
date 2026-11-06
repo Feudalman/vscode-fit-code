@@ -116,7 +116,9 @@ function columnsOfEditor(editor) {
 /* 3. 打补丁 / 还原 VSCode 的 workbench.html                          */
 /* ------------------------------------------------------------------ */
 function locateWorkbenchHtml() {
-	const appDir = require.main ? path.dirname(require.main.filename) : globalThis._VSCODE_FILE_ROOT;
+	// 允许外部指定安装目录的 out（test/apply.cjs 在 VSCode 之外跑命令时用）
+	const appDir = process.env.FITCODE_APP_ROOT
+		|| (require.main ? path.dirname(require.main.filename) : globalThis._VSCODE_FILE_ROOT);
 	if (!appDir) return null;
 	const base = path.join(appDir, 'vs', 'code');
 	const dirs = ['electron-browser/workbench', 'electron-browser', 'electron-sandbox/workbench', 'electron-sandbox'];
@@ -290,7 +292,9 @@ function runtimeConfig() {
 }
 
 async function writeRuntimeConfig(htmlPath) {
-	if (!htmlPath) return false;
+	// 在 VSCode 之外跑命令（test/apply.cjs 会设 FITCODE_APP_ROOT）时不写运行时配置：
+	// 那种环境读不到 profile 里的设置，写进去只会把用户当前的配置覆盖成默认值。
+	if (!htmlPath || process.env.FITCODE_APP_ROOT) return false;
 	const bundle = bundlePathFor(htmlPath);
 	try {
 		if (!fs.existsSync(bundle)) return false;

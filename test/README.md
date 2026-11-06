@@ -68,6 +68,17 @@ touch /tmp/fitcode/AUTO_SPLIT
   --new-window /tmp/fitcode/ce-short.txt /tmp/fitcode/ce-mid.txt /tmp/fitcode/ce-long.txt &
 ```
 
+## 不开 GUI 应用改动
+
+```bash
+node test/apply.cjs install    # 同步仓库代码到 ~/.vscode/extensions/local.fitcode-<version>/
+node test/apply.cjs status     # 安装态 + 运行时配置
+node test/apply.cjs enable     # 打补丁（bundle / workbench.html）
+node test/apply.cjs disable    # 从备份还原
+```
+
+`apply.cjs` 用 `Module._load` 把 `vscode` 模块 stub 掉，命令字段和真实扩展一致；它不改 `fitcode.config.json`（在 VSCode 之外读不到 profile 设置，写了只会覆盖用户配置）。
+
 ## 运行
 
 ```bash

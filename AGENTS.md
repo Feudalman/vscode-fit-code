@@ -23,6 +23,22 @@ node test/patch-bundle.js <干净bundle> <输出bundle>        # 生成补丁体
 
 E2E 需要先起隔离实例，步骤见 `test/README.md`。没有实例时，至少跑离线 `启用 → 禁用` 回归。
 
+## 如何应用与验证
+
+改完代码后照这个顺序走，别让用户手动点命令面板：
+
+```bash
+node test/apply.cjs install     # 同步仓库代码到 ~/.vscode/extensions/local.fitcode-<version>/
+node test/apply.cjs enable      # 对真实安装打补丁（bundle + workbench.html）
+node test/apply.cjs status      # 查安装态 + 运行时配置
+```
+
+- `apply.cjs` 把 `vscode` 模块 stub 掉，直接调 `fitcode.enable/disable/status`；它**不会**改运行时配置（VSCode 之外读不到 profile 设置），配置文件由扩展自己在 VSCode 内维护
+- 干净 bundle 的来源：安装目录里的 `<bundle>.fitcode.bak`（禁用后天然是干净体），或从 `VSCode.app/Contents/Resources/app/out/vs/workbench/` 直接复制
+- 应用/还原后必须让 VSCode **重载窗口**（`open -a` 重启也算）才生效
+- 判断"看起来对不对"必须看真机：先把窗口拉到 ≥800px（面板 <400px 按设计不居中），必要时 `screencapture -R` 抓窗口区域；单独起 `Code --user-data-dir=/tmp/xxx --remote-debugging-port=…` 的隔离实例可以只做几何测量
+- 排查顺序见下节
+
 ## 硬约束
 
 1. `patchBundle` 与 `test/patch-bundle.js` 是同一套补丁的两份实现，改一处必须同步另一处。
