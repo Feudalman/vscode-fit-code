@@ -1,0 +1,10 @@
+# 手写格式，不进 Prettier：
+# - Markdown 是逐句断行的（中文按句、英文按分句），重排只会制造 diff
+# - JSON 用 tab 缩进，和仓库其它文件一致
+*.md
+package.json
+package.nls.json
+package.nls.zh-cn.json
+l10n/
+docs/
+node_modules/
