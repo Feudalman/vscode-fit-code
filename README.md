@@ -2,15 +2,17 @@
 
 [English](README.en.md) | 简体中文
 
+**避免脖子左拧**
+
 让 VSCode 的编辑器像 JetBrains 那样：**正文宽度自适应内容**——内容窄时编辑区居中，内容超出面板时自动撑满并横向滚动。行号跟随正文一起缩进，tab 栏永远满宽，**滚动条与 minimap 始终钉在编辑器右边缘**。
 
-纯自适应，无阈值配置：任何文件，只要内容放得下就居中，放不下自动撑满。
-
-![窄文件的正文居中：行号跟着正文一起缩进，minimap 与滚动条留在最右](docs/centered.png)
-
-切文件时宽度跟着变（7 秒，同一窗口依次打开不同宽度的文件）：
+纯自适应，无阈值配置：任何文件，只要内容放得下就居中，放不下自动撑满。切文件时宽度跟着变（7 秒，同一窗口依次打开不同宽度的文件）：
 
 ![切文件时正文宽度收放](docs/switch.gif)
+
+> 画面里的主题也是自己写的：插件市场搜 `dark-arui`，源码在 [Feudalman/dark-arui](https://github.com/Feudalman/dark-arui)。
+
+居中、行号跟随光标、宽度动画这三件事互不依赖，只要其中一个也行。比如不需要居中、只想让行号跟着光标走，把 `fitcode.center` 设成 `false` 就够，行号那部分照常工作。所有设置见下面「设置」。
 
 ## 这是什么
 
@@ -50,17 +52,37 @@
 
 ## 设置
 
-全部开关都在设置里（改完 1~2 秒生效，不需要重跑「启用」或重载窗口）：
+`FitCode: 启用 / 禁用` 决定补丁在不在，下面这些设置只在启用后起作用。改完 1~2 秒生效，不用重新启用，也不用重载窗口。
 
-| 设置 | 默认 | 作用 |
-|---|---|---|
-| `fitcode.center` | `true` | 正文居中。关掉即回归原生布局 |
-| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） |
-| `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） |
-| `fitcode.animate` | `true` | 切换文件/内容变化时宽度渐变 |
-| `fitcode.animateDuration` | `140` | 渐变时长（ms），0 = 不渐变 |
-| `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标行 |
-| `fitcode.cacheSize` | `300` | 每文件宽度缓存条数上限 |
+| 设置 | 默认值 | 作用 | 关掉居中后 |
+|---|---|---|---|
+| `fitcode.center` | `true` | 正文居中。关掉就回到原生布局 | — |
+| `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标所在行，多光标则每处都显示 | 照常工作 |
+| `fitcode.animate` | `true` | 切文件、改内容时宽度渐变 | 没有效果 |
+| `fitcode.animateDuration` | `140` | 渐变时长（ms），0 表示不渐变 | 没有效果 |
+| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） | 没有效果 |
+| `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） | 没有效果 |
+| `fitcode.cacheSize` | `300` | 每个文件缓存多少条宽度 | 没有效果 |
+
+想省事的话，这三种配法直接抄：
+
+只要行号跟着光标，不要居中：
+
+```json
+{ "fitcode.center": false }
+```
+
+要居中，行号保持原生：
+
+```json
+{ "fitcode.lineNumbersOnlyAtCursor": false }
+```
+
+要居中，不要动画：
+
+```json
+{ "fitcode.animate": false }
+```
 
 原理：渲染层拿不到 VSCode 的设置 API，所以扩展把上述设置写进 `out/vs/workbench/fitcode.config.json`（启用/禁用时会创建/删除），渲染层每 2 秒、以及窗口聚焦时拉一次。手改这个 json 只写部分字段时，其余字段沿用当前值。
 
@@ -76,7 +98,7 @@
 - `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
 - `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
 - `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
-- `docs/`：README 用的图（`centered.png` 实录截图，`switch.gif` 切文件动图，`layout.svg` 手画示意图）
+- `docs/`：README 用的图（`switch.gif` 切文件动图，`layout.svg` 手画示意图）
 - `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
 
 ### 补丁原理（`src/extension.js` 的 `patchBundle`）

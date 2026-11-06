@@ -2,15 +2,17 @@
 
 English | [简体中文](README.md)
 
+**Stop twisting your neck to the left**
+
 Makes the VS Code editor behave like JetBrains IDEs: **the text width follows the content** — narrow content gets centered, content wider than the panel fills it and scrolls horizontally. Line numbers indent together with the text, the tab bar always spans the full width, and the **scrollbar and minimap stay pinned to the editor's right edge**.
 
-Fully adaptive, no thresholds to configure: any file is centered as long as it fits, and fills the panel the moment it does not.
-
-![A narrow file centered: line numbers indent with the text, the minimap and scrollbar stay on the right](docs/centered.png)
-
-Width follows the content when you switch files:
+Fully adaptive, no thresholds to configure: any file is centered as long as it fits, and fills the panel the moment it does not. Width follows the content when you switch files (7 s, several files of different widths opened in one window):
 
 ![The text width grows and shrinks when switching files](docs/switch.gif)
+
+> The theme in the recording is my own too: search `dark-arui` in the Marketplace, source at [Feudalman/dark-arui](https://github.com/Feudalman/dark-arui).
+
+Centering, line numbers following the cursor and the width animation don't depend on each other, so you can keep just one of them. If you want the line numbers to follow the cursor and nothing else, set `fitcode.center` to `false` and the line-number part keeps working. All the switches are listed under Settings below.
 
 ## What it is
 
@@ -49,17 +51,37 @@ The extension modifies two files inside the VS Code install folder (both are bac
 
 ## Settings
 
-Every switch is a regular setting (changes take effect in 1-2 seconds, no need to re-run Enable or reload the window):
+`FitCode: Enable / Disable` controls whether the patch is in place; the settings below only matter while it is. Changes take effect in 1-2 seconds, no need to enable again or reload the window.
 
-| Setting | Default | Effect |
-|---|---|---|
-| `fitcode.center` | `true` | Center the text. Turn it off to go back to the native layout |
-| `fitcode.minTextWidth` | `640` | Minimum text width (px) |
-| `fitcode.paddingRight` | `20` | Extra padding on the right of the text (px) |
-| `fitcode.animate` | `true` | Animate the width when switching files or when the content changes |
-| `fitcode.animateDuration` | `140` | Animation duration (ms), 0 = no animation |
-| `fitcode.lineNumbersOnlyAtCursor` | `true` | Show line numbers only on the cursor line |
-| `fitcode.cacheSize` | `300` | Max number of cached widths per file |
+| Setting | Default | Effect | With centering off |
+|---|---|---|---|
+| `fitcode.center` | `true` | Center the text. Turn it off to go back to the native layout | — |
+| `fitcode.lineNumbersOnlyAtCursor` | `true` | Show line numbers only on the cursor lines, all of them when there are several cursors | Keeps working |
+| `fitcode.animate` | `true` | Animate the width when switching files or when the content changes | No effect |
+| `fitcode.animateDuration` | `140` | Animation duration (ms), 0 means no animation | No effect |
+| `fitcode.minTextWidth` | `640` | Minimum text width (px) | No effect |
+| `fitcode.paddingRight` | `20` | Extra padding on the right of the text (px) | No effect |
+| `fitcode.cacheSize` | `300` | How many widths to cache per file | No effect |
+
+Three configurations worth copying:
+
+Only the line numbers, no centering:
+
+```json
+{ "fitcode.center": false }
+```
+
+Centering with the native line numbers:
+
+```json
+{ "fitcode.lineNumbersOnlyAtCursor": false }
+```
+
+Centering without the animation:
+
+```json
+{ "fitcode.animate": false }
+```
 
 How it works: the renderer has no access to the settings API, so the extension writes the settings above into `out/vs/workbench/fitcode.config.json` (created on enable, deleted on disable); the renderer polls it every 2 seconds and when the window gains focus. If you edit that json and only write some of the keys, the missing ones keep their current value.
 
@@ -75,7 +97,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 - `src/extension.js`: extension logic — patching and restoring `workbench.html` / the bundle, the enable/disable commands
 - `media/inject.js`: the renderer script (column counting + writing the rulers carrier)
 - `package.nls*.json` + `l10n/`: strings. English is the source (and the fallback); every other language is one file per kind
-- `docs/`: images used by the READMEs (`centered.png` is a real screenshot, `switch.gif` is a screen recording, `layout.svg` is hand-drawn)
+- `docs/`: images used by the READMEs (`switch.gif` is a screen recording, `layout.svg` is hand-drawn)
 - `test/`: CDP-driven E2E (`e2e.mjs`), offline patch body generation (`patch-bundle.js`), live geometry diagnostics (`measure.mjs`); usage and the assertion table are in `test/README.md` (Chinese)
 
 ### How the patch works (`patchBundle` in `src/extension.js`)
