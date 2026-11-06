@@ -2,9 +2,25 @@
 	"name": "fitcode",
 	"displayName": "FitCode",
 	"description": "%fitcode.description%",
-	"version": "0.3.0",
-	"publisher": "local",
+	"version": "0.1.0",
+	"publisher": "arui",
 	"license": "MIT",
+	"icon": "icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Feudalman/vscode-fitcode.git"
+	},
+	"homepage": "https://feudalman.github.io/vscode-fitcode/",
+	"keywords": [
+		"center",
+		"centered",
+		"layout",
+		"width",
+		"jetbrains",
+		"scrollbar",
+		"minimap",
+		"zen"
+	],
 	"engines": {
 		"vscode": "^1.90.0"
 	},

@@ -22,7 +22,7 @@
 - **布局层**（bundle 补丁）：Monaco 的 `computeLayout` 读取每个编辑器自己的 rulers 载体，把内缩量应用到 glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（−2×pad）；`EditorScrollbar._setLayout` 再把承载正文的容器**加宽 pad**（不动 left），使容器右缘铺回编辑器最右。
 - **注入方式**：`media/inject.js` 内联写进 `workbench.html`。内联脚本要求移除 `workbench.html` 的 CSP meta——原文以 base64 注释留在文件里，禁用时原样还原。
 
-![原生布局与 FitCode 的几何差别：正文两侧各内缩 pad，minimap 与滚动条不动](docs/layout.svg)
+![原生布局与 FitCode 的几何差别：正文两侧各内缩 pad，minimap 与滚动条不动](docs/layout.png)
 
 **切文件不闪**：渲染层是事件驱动的（`onDidChangeModel` / 内容变化 / 布局变化），切 tab 时在绘制前就把 rulers 写对；
 最长行结果按文件 uri 缓存在 `localStorage`（行数 + 字符总数 + 首尾行采样做指纹），重开同一文件直接复用。
@@ -98,7 +98,7 @@
 - `src/extension.js`：扩展主逻辑——workbench.html/bundle 的补丁、还原、启用/禁用命令
 - `media/inject.js`：注入到渲染层的自适应脚本（列数计算 + rulers 载体写入）
 - `package.nls*.json` + `l10n/`：文案。英文是源（也是兜底），其它语言按 locale 各一个文件
-- `docs/`：官网（`index.html` + `site.css` + `site.js`，GitHub Pages 从这里发）与 README 用的图（`switch.gif` 切文件动图，`layout.svg` 手画示意图）
+- `docs/`：官网（`index.html` + `site.css` + `site.js`，GitHub Pages 从这里发）与 README 用的图（`switch.gif` 切文件动图，`layout.svg` 手画示意图，`layout.png` 由它渲染而来——市场页不接受 README 里的 SVG）
 - `test/`：CDP 驱动的 E2E（`e2e.mjs`）、离线补丁体生成（`patch-bundle.js`）、现场几何诊断（`measure.mjs`），用法与断言表见 `test/README.md`
 
 ### 补丁原理（`src/extension.js` 的 `patchBundle`）
