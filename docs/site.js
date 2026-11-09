@@ -363,7 +363,8 @@
 
     "limits.title": "What it doesn't do",
     "limits.lede": "These boundaries are part of the design, not bugs waiting to be fixed.",
-    "lim1": "Files with <code>editor.wordWrap</code> enabled are not centered — centering is meaningless in wrapped mode.",
+    "lim1":
+      "Word-wrapped files follow the same rule: centering depends only on how wide the content is. When it does not fit, the panel is filled and the lines fold at the panel width (no horizontal scrolling); when it fits, the text is centered and the fold width shrinks with the inset. Only <code>wordWrap: \"wordWrapColumn\"</code> (a column width you fixed yourself) is left alone.",
     "lim2":
       "Editor panels narrower than 400px are not centered — a window shrunk to a small square looks like it does nothing at all.",
     "lim3":

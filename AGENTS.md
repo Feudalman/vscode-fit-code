@@ -9,7 +9,8 @@ VSCode 扩展 FitCode：让编辑器正文按内容宽度居中，滚动条与 m
 ## 目录
 
 - `src/extension.js`：启用/禁用/状态命令；`patchBundle` 打 4 处补丁
-- `media/inject.js`：渲染层脚本，算每个编辑器的最长行宽度并把内缩量写进 `rulers`
+- `media/inject.js`：渲染层脚本，算每个编辑器的最长行宽度并把内缩量写进 `rulers`。
+  **居不居中只看内容宽度，不看 wordWrap**：放得下就居中，放不下就撑满（开自动换行时表现为折行）
 - `test/patch-bundle.js`：离线生成补丁体（E2E 用），**必须与 `patchBundle` 保持同一套补丁**
 - `test/e2e.mjs` / `test/measure.mjs`：CDP 驱动的几何断言 / 现场诊断
 - `test/README.md`：E2E 用法、断言表、踩坑清单
@@ -71,12 +72,22 @@ vsce publish                                 # PAT 在登录钥匙串里，vsce 
    （`description` 写成 `%fitcode.config.<名字>.description%`）、`package.nls.json` 和
    `package.nls.zh-cn.json` 各补一条说明、`src/extension.js` 的 `runtimeConfig()`、
    `media/inject.js` 的 `DEFAULTS` + `applyConfig()`。
+9. 自动换行的支持**不能只改 `contentWidth`**：Monaco 的 `viewportColumn` / `wrappingColumn`
+   在 `computeLayout` 里就已按原宽度算好，只缩 `contentWidth` 的话 pad 只挪位置、文字仍在原宽度上折行。
+   补丁 3 必须用 `__ftVC(w)` 按收窄后的宽度重算这两个字段；`__ftP=0` 时返回原值，保证未内缩场景语义不变。
+   ⚠️ 别把 `minTextWidth` 当成“自动换行时的栏宽上限”：长行 markdown 会固定折在窄栏里、永远不撑满
+   （踩过，用户第一反应就是“为什么长行不撑开”）。居中与否只由内容宽度决定。
+10. **改了补丁内容就要改 `BUNDLE_CURRENT` 指纹**：`patchBundle` 靠“有 `__ftGate` 却没有本版独有
+   符号”判断“旧版补丁留在原地”，命中就先从 `.bak` 还原再重打。不改指纹的话，用户升级后重跑
+   一次「启用」会变成空操作，老补丁继续生效（已踩过）。
 
 ## 排查"改了没生效"
 
 按顺序看，别跳：窗口/编辑器面板是否 ≥ 400px（< 400px 按设计不居中和）→ `window.__ftLoaded === true` →
 `html` 里有没有残留 CSP meta → 编辑器 `getOption(117)` 的 rulers 是否有 pad →
 `.monaco-scrollable-element.editor-scrollable` 的 `left` 与 `width`。
+markdown 这类默认 `wordWrap=on` 的文件现在也会居中，但如果内容比 `minTextWidth` 宽还看不出变化，
+先看 `getLayoutInfo()` 的 `wrappingColumn` 有没有跟着收窄（没缩就是补丁 3 的 `__ftVC` 没生效）。
 注意：CDP 里量到的窗口可能不是用户眼前的窗口，判断"看起来对不对"要用同一个 target 的 `Page.captureScreenshot`。
 
 ## 提交规范

@@ -168,6 +168,12 @@ const M = `(() => {
       vsb: li.verticalScrollbarWidth,
       mm: li.minimap.renderMinimap !== 0 ? li.minimap.minimapWidth : 0,
       minimapLeft: li.minimap.minimapLeft,
+      // 自动换行：折行列宽（wrappingColumn）是否跟着内缩一起收窄
+      wrapOn: li.isViewportWrapping,
+      wrappingColumn: li.wrappingColumn,
+      viewportColumn: li.viewportColumn,
+      modelLines: model ? model.getLineCount() : 0,
+      viewLines: dom.querySelectorAll(".view-line").length,
       // 滚动条右缘到面板右缘的距离：0 = 钉在最右；≈pad = 跟着正文居中
       scrollbarRightGap: sbr ? Math.round(gb.right - sbr.right) : null };
   });
@@ -311,6 +317,67 @@ if (long && short) {
 const shot = await send("Page.captureScreenshot", { format: "png" });
 writeFileSync(`${ROOT}/e2e-split.png`, Buffer.from(shot.data, "base64"));
 
+// ============ C. 自动换行（markdown 默认 wordWrap=on）============
+// 关键点：居中与否只看内容宽度，与 wordWrap 无关。
+//   ce-note.md      → 短行（40 列）：自然宽度放得下 → 居中
+//   ce-note-wide.md → 长行（300 列）：自然宽度放不下 → 撑满，且折行而不是横向滚动
+await clickTab("ce-note.md");
+await sleep(2500);
+const ns = await evaluate(M, "note-short");
+const nsEd = ns.find((x) => !x.empty);
+if (nsEd) {
+  const g = geom(nsEd);
+  check(
+    "C1 短行 markdown（换行开）居中：左右内缩相等且 > 0",
+    g.padL > 0 && g.centered,
+    fmt({ ...g, paneW: nsEd.paneW }),
+  );
+  // 拿单字符宽反推：viewportColumn = floor((contentWidth − vsb − 2) / 单字符宽)
+  const cw = (nsEd.contentWidth - nsEd.vsb - 2) / Math.max(1, nsEd.viewportColumn);
+  const fullCols = Math.floor(
+    (nsEd.width - nsEd.gutter - nsEd.mm - nsEd.vsb - 2) / cw,
+  );
+  check(
+    "C2 居中时换行列宽也跟着收窄",
+    nsEd.wrapOn === true &&
+      nsEd.wrappingColumn > 0 &&
+      nsEd.wrappingColumn <= fullCols - 5,
+    `折行列=${nsEd.wrappingColumn} 面板可用=${fullCols}`,
+  );
+}
+
+await clickTab("ce-note-wide");
+await sleep(2500);
+const nw = await evaluate(M, "note-wide");
+const nwEd = nw.find((x) => !x.empty);
+if (nwEd) {
+  const g = geom(nwEd);
+  check(
+    "C3 长行 markdown（换行开）按内容宽度撑满：内缩 ≈ 0",
+    Math.abs(g.padL) <= 1,
+    fmt({ ...g, paneW: nwEd.paneW }),
+  );
+  // 折行列宽 == 面板可用列数（不是 minTextWidth 那个窄栏）才说明“撑满后在面板宽度上折行”；
+  // 不用 DOM 的 .view-line 计数判定——长文档会被虚拟化，数出来不稳定
+  const cwW = (nwEd.contentWidth - nwEd.vsb - 2) / Math.max(1, nwEd.viewportColumn);
+  const fullColsW = Math.floor(
+    (nwEd.width - nwEd.gutter - nwEd.mm - nwEd.vsb - 2) / cwW,
+  );
+  check(
+    "C4 撑满后折行列宽 = 面板可用列数（没有被 minTextWidth 卡住）",
+    nwEd.wrapOn === true &&
+      nwEd.wrappingColumn > 0 &&
+      Math.abs(nwEd.wrappingColumn - fullColsW) <= 1,
+    `折行列=${nwEd.wrappingColumn} 面板可用=${fullColsW}（可视行=${nwEd.viewLines} 模型行=${nwEd.modelLines}）`,
+  );
+  check(
+    "C5 自动换行时滚动条仍钉右边缘",
+    Math.abs(nwEd.scrollbarRightGap) <= 1,
+    `距右缘=${nwEd.scrollbarRightGap}px`,
+  );
+  const shot2 = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(`${ROOT}/e2e-wrapped.png`, Buffer.from(shot2.data, "base64"));
+}
 console.log("\n=== E2E 汇总 ===");
 console.log(
   results.map((r) => `${r.ok ? "PASS" : "FAIL"}  ${r.name}`).join("\n"),

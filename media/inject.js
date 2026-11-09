@@ -303,22 +303,37 @@
     return out;
   }
 
+  // wordWrap 生效值：与 bundle 补丁同一套解析（override2 → override1 → wordWrap）
+  function wordWrapOf(ed) {
+    try {
+      var w = ed.getOption(156);
+      if (w === "inherit") w = ed.getOption(155);
+      if (w === "inherit") w = ed.getOption(151);
+      return w || "off";
+    } catch (e) {
+      return "off";
+    }
+  }
+
   function computePadFor(ed) {
     if (!cfg.center) return 0; // 回归原生布局
     var dom = ed.getDomNode();
     var host = dom.parentElement;
     var avail = host ? host.clientWidth : 0;
     if (avail < 400) return 0; // 与补丁门控（outerWidth>=400）保持一致
+    var wrap = wordWrapOf(ed);
+    if (wrap === "wordWrapColumn") return 0; // 固定列宽模式，不参与居中（与补丁门控一致）
     var li = ed.getLayoutInfo();
     var gutter =
       li.glyphMarginWidth + li.lineNumbersWidth + li.decorationsWidth;
     var mm = li.minimap.renderMinimap !== 0 ? li.minimap.minimapWidth : 0;
     var vsb = li.verticalScrollbarWidth;
     var cw = charWidth(dom);
-    var target = colsFor(ed.getModel()) * cw + cfg.paddingRight; // 想要的正文可视宽
+    var natural = colsFor(ed.getModel()) * cw + cfg.paddingRight; // 正文自然宽度
     var minText = Math.max(0, cfg.minTextWidth - gutter); // 最小宽度
-    if (target < minText) target = minText;
-    // 纯自适应：放得下就居中，放不下自动撑满 + 横向滚动
+    // 居中与否不看 wordWrap：只看内容多宽。放得下就居中，放不下就撑满；
+    // 自动换行时内容比面板宽也只是“折行”而不会出现横向滚动条（换行列宽由补丁重算）。
+    var target = Math.max(natural, minText);
     return Math.max(0, Math.floor((avail - gutter - mm - vsb - target) / 2));
   }
 
