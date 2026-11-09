@@ -76,7 +76,12 @@
             窄文件居中阅读，宽文件铺满面板。行号跟着正文走，滚动条与 minimap 原地不动。
           </p>
           <div class="cta">
-            <a class="btn primary" href="#install" data-i18n="cta.install">安装</a>
+            <a
+              class="btn primary"
+              href="https://marketplace.visualstudio.com/items?itemName=arui.fitcode"
+              data-i18n="cta.marketplace"
+              >安装到 VS Code</a
+            >
             <a
               class="btn"
               href="https://github.com/Feudalman/vscode-fitcode"
@@ -263,19 +268,24 @@
         <div class="wrap">
           <header class="sec-head">
             <h2 data-i18n="install.title">安装</h2>
-            <p data-i18n="install.lede">还没上架扩展市场。克隆下来放进扩展目录，执行一次启用命令，全部可逆。</p>
+            <p data-i18n="install.lede">已在 VS Code 扩展市场上架。装上后执行一次启用命令，全部可逆。</p>
           </header>
 
           <div class="install">
             <ol class="install-steps">
               <li>
-                <h3 data-i18n="install.s1t">拷进扩展目录</h3>
+                <h3 data-i18n="install.s1t">从扩展市场安装</h3>
+                <p data-i18n="install.s1b">
+                  扩展视图里搜 <code>FitCode</code>，或打开
+                  <a href="https://marketplace.visualstudio.com/items?itemName=arui.fitcode"
+                    >市场页面</a
+                  >点安装；命令行也行：
+                </p>
                 <div class="code">
                   <div class="code-bar">
                     <button class="copy" type="button" data-i18n="install.copy">复制</button>
                   </div>
-                  <pre><code>git clone https://github.com/Feudalman/vscode-fitcode.git
-cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
+                  <pre><code>code --install-extension arui.fitcode</code></pre>
                 </div>
               </li>
               <li>
@@ -303,7 +313,7 @@ cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
               <div class="tip">
                 <strong data-i18n="install.upT">升级</strong>
                 <p data-i18n="install.upB">
-                  换上新版扩展目录后再执行一次启用：检测到旧补丁会先从备份还原，再按新版重打。
+                  在市场里更新到新版本后再执行一次启用：检测到旧补丁会先从备份还原，再按新版重打。
                 </p>
               </div>
               <div class="tip warn">
@@ -313,6 +323,12 @@ cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
                 </p>
               </div>
             </aside>
+
+            <p class="note" data-i18n="install.sourceNote">
+              想从源码跑：把仓库放进
+              <code>~/.vscode/extensions/arui.fitcode-&lt;版本&gt;/</code>，但要先卸掉市场版，
+              否则两份会同时激活、各打一遍补丁。
+            </p>
           </div>
 
           <div class="agent">
@@ -320,7 +336,7 @@ cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
               <p class="agent-badge">AI</p>
               <h3 data-i18n="agent.title">不想手动装？把这段丢给 agent</h3>
               <p data-i18n="agent.desc">
-                原样发给 Claude Code、Codex 这类能执行命令的 AI，它会自己克隆、装进扩展目录、打好补丁。装完你只需要重载一次窗口。
+                原样发给 Claude Code、Codex 这类能执行命令的 AI，它会自己装扩展、打好补丁。装完你只需要重载一次窗口。
               </p>
             </div>
             <div class="code">
@@ -329,14 +345,14 @@ cp -r vscode-fitcode ~/.vscode/extensions/local.fitcode-0.1.0</code></pre>
               </div>
               <pre><code data-i18n="agent.prompt">帮我装一下 FitCode 这个 VS Code 扩展，它让编辑器的正文宽度跟着内容走。
 
-1. 把 https://github.com/Feudalman/vscode-fitcode.git 克隆到临时目录
-2. 在仓库里执行 node test/apply.cjs install，把扩展同步进 ~/.vscode/extensions/
-3. 再执行 node test/apply.cjs enable，给 VS Code 安装目录打补丁
-4. 执行 node test/apply.cjs status，确认补丁已经打上
-5. 最后提醒我重载一次 VS Code 窗口
+1. 执行 code --install-extension arui.fitcode，从扩展市场装（不行就从 https://github.com/Feudalman/vscode-fitcode.git 克隆，用 node test/apply.cjs install 装成开发副本）
+2. 执行 node test/apply.cjs status，看当前补丁状态；没有仓库就用 VS Code 里的 FitCode: 状态 命令
+3. 需要打补丁时，在「FitCode: 启用」和市场版之间选一个：优先让用户在 VS Code 里执行启用，实在不行再跑 node test/apply.cjs enable
+4. 提醒我重载一次 VS Code 窗口
 
 几点注意：
 - enable 会改 VS Code 安装目录里的 workbench.desktop.main.js 和 workbench.html，改之前自动备份，禁用时原样还原
+- 别同时装市场版和源码副本，两份会各自打一遍补丁
 - 找不到 VS Code 安装目录就先问我，别猜路径
 - 除了扩展目录和 VS Code 安装目录，别动我其它文件</code></pre>
             </div>

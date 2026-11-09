@@ -42,13 +42,15 @@
 - `workbench.desktop.main.js`：4 处锚点补丁
 - `workbench.html`：插入内联注入脚本（并把 CSP meta 挪进 base64 注释）
 
-1. 将本目录拷贝到 `~/.vscode/extensions/local.fitcode-<package.json 里的 version>/`
+1. 在 [VS Code 扩展市场](https://marketplace.visualstudio.com/items?itemName=arui.fitcode) 安装 **FitCode**——或执行 `code --install-extension arui.fitcode`
 2. 重载窗口后，命令面板执行 **`FitCode: 启用`** → 按提示重载窗口
 3. 完成——打开窄文件会居中，宽文件自动撑满
 
 **停用**：命令面板执行 **`FitCode: 禁用`** → 重载窗口（从自动备份原样还原）。
 **状态**：命令面板执行 **`FitCode: 状态`**。
-**升级**：换上新版扩展目录后，直接执行一次 **`FitCode: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
+**升级**：在市场里更新到新版本后，再执行一次 **`FitCode: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
+
+想从源码跑？把仓库放进 `~/.vscode/extensions/arui.fitcode-<package.json 里的 version>/`——但要先卸掉市场版，否刚两份会同时激活、各打一遍补丁。
 
 ## 设置
 
@@ -113,4 +115,4 @@
 > 为什么需要第 4 处：滚动条是 `contentLeft+contentWidth` 那个容器的子元素，第 3 处补丁把 `contentWidth` 缩小了 `2×pad`，滚动条于是"跟着正文居中"。第 4 处只把容器加宽 `pad`，正文位置不变。
 
 每次打补丁前自动备份原文件为 `workbench.desktop.main.js.fitcode.bak`，禁用时原样还原。
-升级安装：换上新版扩展目录后执行一次 `FitCode: 启用` 即可——检测到旧版补丁痕迹会先从备份还原再按新版重打（备份丢了会明确报错，不会损坏安装）。
+升级安装：在市场里更新到新版本后执行一次 `FitCode: 启用` 即可——检测到旧版补丁痕迹会先从备份还原再按新版重打（备份丢了会明确报错，不会损坏安装）。

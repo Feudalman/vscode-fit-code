@@ -262,7 +262,7 @@
     "hero.lede":
       "Narrow files read centered, wide files fill the panel. Line numbers follow the text, the scrollbar and minimap stay where they are.",
 
-    "cta.install": "Install",
+    "cta.marketplace": "Install from the Marketplace",
     "cta.github": "View on GitHub",
     "cta.how": "See how it works",
 
@@ -319,8 +319,10 @@
       "All four patches are guarded by uniqueness assertions: a mismatched anchor aborts instead of guessing. The original file is backed up to <code>.fitcode.bak</code> before patching and restored verbatim on disable.",
 
     "install.title": "Install",
-    "install.lede": "Not on the Marketplace yet. Clone it into the extensions folder, run Enable once — all of it reversible.",
-    "install.s1t": "Copy it into the extensions folder",
+    "install.lede": "Published on the VS Code Marketplace. Run Enable once after installing — all of it reversible.",
+    "install.s1t": "Install from the Marketplace",
+    "install.s1b":
+      "Search for <code>FitCode</code> in the Extensions view, or open the <a href=\"https://marketplace.visualstudio.com/items?itemName=arui.fitcode\">Marketplace page</a> and hit Install. The command line works too:",
     "install.s2t": "Reload, then run Enable",
     "install.s2b":
       "From the Command Palette (<kbd>Cmd/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) run <code>FitCode: Enable</code> and reload when prompted.",
@@ -333,13 +335,15 @@
       "Run <code>FitCode: Disable</code> and reload: both modified files are restored verbatim from the automatic backup.",
     "install.upT": "Upgrade",
     "install.upB":
-      "Drop in the new extension folder and run Enable once — an older patch is restored from the backup first, then every patch is applied again.",
+      "Update the extension from the Marketplace, then run Enable once — an older patch is restored from the backup first, then every patch is applied again.",
+    "install.sourceNote":
+      "Prefer running from source? Drop the repo into <code>~/.vscode/extensions/arui.fitcode-&lt;version&gt;/</code>, but uninstall the Marketplace copy first — otherwise both activate and each one patches the install folder.",
     "install.warnT": 'The first enable may warn that the installation "appears to be corrupt"',
     "agent.title": "Don't feel like doing it by hand? Hand it to an agent",
     "agent.desc":
-      "Send the prompt below to an AI that can run commands (Claude Code, Codex, and so on). It clones the repo, puts the extension in place and applies the patch. All you do afterwards is reload the window.",
+      "Send the prompt below to an AI that can run commands (Claude Code, Codex, and so on). It installs the extension and applies the patch. All you do afterwards is reload the window.",
     "agent.prompt":
-      "Install the FitCode VS Code extension for me — it makes the editor's text width follow the content.\n\n1. Clone https://github.com/Feudalman/vscode-fitcode.git into a temp directory\n2. In the repo, run: node test/apply.cjs install (syncs the extension into ~/.vscode/extensions/)\n3. Then run: node test/apply.cjs enable (patches the VS Code install folder)\n4. Run: node test/apply.cjs status and confirm the patch is in place\n5. Finally remind me to reload the VS Code window\n\nNotes:\n- enable modifies workbench.desktop.main.js and workbench.html inside the VS Code install folder; both are backed up first and restored verbatim on disable\n- If you cannot find the VS Code install folder, ask me instead of guessing\n- Do not touch any files outside the extension folder and the VS Code install folder",
+      "Install the FitCode VS Code extension for me — it makes the editor's text width follow the content.\n\n1. Run: code --install-extension arui.fitcode (that is the Marketplace build; if it fails, clone https://github.com/Feudalman/vscode-fitcode.git and use node test/apply.cjs install to set up a dev copy)\n2. Run: node test/apply.cjs status to see the current patch state (without the repo, use the FitCode: Show status command in VS Code)\n3. To apply the patch, prefer the user running FitCode: Enable inside VS Code; only fall back to node test/apply.cjs enable if that is not possible\n4. Remind me to reload the VS Code window\n\nNotes:\n- enable modifies workbench.desktop.main.js and workbench.html inside the VS Code install folder; both are backed up first and restored verbatim on disable\n- Never keep the Marketplace build and a source copy installed at the same time: both patch the install folder\n- If you cannot find the VS Code install folder, ask me instead of guessing\n- Do not touch any files outside the extension folder and the VS Code install folder",
 
     "install.warnB":
       "That is the expected result of VS Code's checksum validation (it does not recognise the modified files). Just dismiss it.",

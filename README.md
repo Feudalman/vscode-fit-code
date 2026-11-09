@@ -41,13 +41,15 @@ The extension modifies two files inside the VS Code install folder (both are bac
 - `workbench.desktop.main.js`: 4 anchored patches
 - `workbench.html`: inserts the inline injection script (and moves the CSP meta into a base64 comment)
 
-1. Copy this folder to `~/.vscode/extensions/local.fitcode-<version from package.json>/`
+1. Install **FitCode** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=arui.fitcode) — or run `code --install-extension arui.fitcode`
 2. Reload the window, run **`FitCode: Enable`** from the Command Palette, then reload again when prompted
 3. Done — narrow files are centered, wide files fill the panel
 
 **Disable**: run **`FitCode: Disable`** → reload the window (restored verbatim from the automatic backup).
 **Status**: run **`FitCode: Show status`**.
-**Upgrade**: drop in the new extension folder and run **`FitCode: Enable`** once — a previously applied patch is restored from the backup first, then every patch is applied again from the new version.
+**Upgrade**: update the extension from the Marketplace, then run **`FitCode: Enable`** once — a previously applied patch is restored from the backup first, then every patch is applied again from the new version.
+
+Working from source instead? Drop the repo into `~/.vscode/extensions/arui.fitcode-<version from package.json>/` — but uninstall the Marketplace copy first, or both activate and each one patches the install folder.
 
 ## Settings
 
@@ -112,4 +114,4 @@ Four patches against `workbench.desktop.main.js` (each guarded by a uniqueness a
 > Why patch 4 exists: the scrollbar is a child of the `contentLeft + contentWidth` container, and patch 3 shrinks `contentWidth` by `2×pad`, so the scrollbar "follows the text towards the center". Patch 4 only widens the container by `pad`, leaving the text position alone.
 
 The original file is backed up to `workbench.desktop.main.js.fitcode.bak` before patching and restored verbatim on disable.
-Upgrading: drop in the new extension folder and run `FitCode: Enable` once — traces of an older patch are restored from the backup first and the new patches are applied on top (a missing backup is reported explicitly; the install is never damaged).
+Upgrading: update the extension from the Marketplace and run `FitCode: Enable` once — traces of an older patch are restored from the backup first and the new patches are applied on top (a missing backup is reported explicitly; the install is never damaged).

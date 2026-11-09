@@ -72,7 +72,7 @@ json.dump(d, open('/tmp/fitcode/profile/User/globalStorage/storage.json', 'w'))
 ## 不开 GUI 应用改动
 
 ```bash
-node test/apply.cjs install    # 同步仓库代码到 ~/.vscode/extensions/local.fitcode-<version>/
+node test/apply.cjs install    # 同步仓库代码到 ~/.vscode/extensions/arui.fitcode-<version>/（开发副本，会与市场版抢）
 node test/apply.cjs status     # 安装态 + 运行时配置
 node test/apply.cjs enable     # 打补丁（bundle / workbench.html）
 node test/apply.cjs disable    # 从备份还原

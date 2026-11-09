@@ -14,6 +14,7 @@ VSCode 扩展 FitCode：让编辑器正文按内容宽度居中，滚动条与 m
 - `test/e2e.mjs` / `test/measure.mjs`：CDP 驱动的几何断言 / 现场诊断
 - `test/README.md`：E2E 用法、断言表、踩坑清单
 - `docs/`：官网（`index.html` + `site.css` + `site.js`，GitHub Pages 发这个目录）＋ README 用的图。纯静态，无构建、无依赖
+- `package.json` / `icon.png` / `LICENSE` / `CHANGELOG.md` / `.vscodeignore`：上架市场用，改版本号要同步 `CHANGELOG.md` 与 `docs/index.html` 顶部的 `v0.x.y`
 
 ## 命令
 
@@ -29,17 +30,33 @@ E2E 需要先起隔离实例，步骤见 `test/README.md`。没有实例时，�
 改完代码后照这个顺序走，别让用户手动点命令面板：
 
 ```bash
-node test/apply.cjs install     # 同步仓库代码到 ~/.vscode/extensions/local.fitcode-<version>/
+node test/apply.cjs install     # 同步仓库代码到 ~/.vscode/extensions/arui.fitcode-<version>/（开发副本）
 node test/apply.cjs enable      # 对真实安装打补丁（bundle + workbench.html）
 node test/apply.cjs status      # 查安装态 + 运行时配置
 ```
 
-- `apply.cjs` 把 `vscode` 模块 stub 掉，直接调 `fitcode.enable/disable/status`；它**不会**改运行时配置（VSCode 之外读不到 profile 设置），配置文件由扩展自己在 VSCode 内维护
+- **日常用的那份来自扩展市场**（`arui.fitcode`）；`apply.cjs install` 建的是一份开发副本，两者会同时激活、各打一遍补丁。改完代码要真机验证时，先 `code --uninstall-extension arui.fitcode` 卸市场版，验完再删副本装回市场版
+- `apply.cjs` 把 `vscode` 模块 stub 掉，直接调 `fitcode.enable/disable/status`；stub 读不到 profile 设置，`activate()` 会把 `fitcode.config.json` 写成默认值——跑完记得按用户 `settings.json` 改回去
 - 干净 bundle 的来源：安装目录里的 `<bundle>.fitcode.bak`（禁用后天然是干净体），或从 `VSCode.app/Contents/Resources/app/out/vs/workbench/` 直接复制
 - 应用/还原后必须让 VSCode **重载窗口**（`open -a` 重启也算）才生效
 - 判断"看起来对不对"必须看真机：先把窗口拉到 ≥800px（面板 <400px 按设计不居中），必要时 `screencapture -R` 抓窗口区域；单独起 `Code --user-data-dir=/tmp/xxx --remote-debugging-port=…` 的隔离实例可以只做几何测量
 - VSCode 自身更新会替换整个 app 目录（bundle、html、备份全没）。扩展启动 2.5s 后会检查「设置里 enabled=true 但 bundle 没补丁」并弹通知（`checkPatchAlive`），这条路径只能改代码验逻辑，实际弹窗要在真机看
 - 排查顺序见下节
+
+## 发布
+
+市场上的 id 是 `arui.fitcode`（`publisher` 必须是 `arui`，不是 `local`）。
+
+```bash
+vsce package                                 # 先打包看清单：不该有 test/、docs/、AGENTS.md
+code --install-extension fitcode-<version>.vsix --force   # 装一遍确认能启用
+vsce publish                                 # PAT 在登录钥匙串里，vsce login 不用重跑
+```
+
+- `repository` 字段不能删：vsce 靠它把 README 里的相对图片改写成 `raw/HEAD/...` 绝对地址，
+  所以 `docs/` 可以从包里整个排除，图片照样能显示
+- README 里不能出现 SVG（市场直接拒收），示意图要用 PNG（`docs/layout.png` 由 `docs/layout.svg` 渲染）
+- 发新版本：改 `package.json` 的 `version` + `CHANGELOG.md` + `docs/index.html` 顶部的 `vx.y.z`，再 `vsce publish`
 
 ## 硬约束
 
