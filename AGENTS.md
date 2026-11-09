@@ -75,6 +75,9 @@ vsce publish                                 # PAT 在登录钥匙串里，vsce 
 9. 自动换行的支持**不能只改 `contentWidth`**：Monaco 的 `viewportColumn` / `wrappingColumn`
    在 `computeLayout` 里就已按原宽度算好，只缩 `contentWidth` 的话 pad 只挪位置、文字仍在原宽度上折行。
    补丁 3 必须用 `__ftVC(w)` 按收窄后的宽度重算这两个字段；`__ftP=0` 时返回原值，保证未内缩场景语义不变。
+10. **改了补丁内容就要改 `BUNDLE_CURRENT` 指纹**：`patchBundle` 靠“有 `__ftGate` 却没有本版独有
+   符号”判断“旧版补丁留在原地”，命中就先从 `.bak` 还原再重打。不改指纹的话，用户升级后重跑
+   一次「启用」会变成空操作，老补丁继续生效（已踩过）。
 
 ## 排查"改了没生效"
 

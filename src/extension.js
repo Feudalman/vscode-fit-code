@@ -63,6 +63,10 @@ const BUNDLE_MARKER3 = "__ftGate";
 const BUNDLE_ANCHOR4 =
   /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
 const BUNDLE_MARKER4 = "__ftSb";
+// 本版补丁 3 的独有符号：只要 bundle 里已有 FitCode 补丁（__ftGate）却缺这个，
+// 就是“旧版补丁留在原地”，必须先还原再重打——否则重复执行启用会变成空操作。
+// 改补丁 3/4 的内容时，必须同步改这里。
+const BUNDLE_CURRENT = "__ftVC";
 // 渲染层读不到 VSCode 的设置，所以扩展把 fitcode.* 写成 json 放在 bundle 旁边，
 // 渲染层（media/inject.js）定时拉取 → 改设置 1~2 秒内生效，不用重跑「启用」。
 const RUNTIME_CONFIG_FILE = "fitcode.config.json";
@@ -251,12 +255,15 @@ async function patchBundle(htmlPath) {
   let src = await fs.promises.readFile(bundle, "utf8");
   const bak = bundle + ".fitcode.bak";
   migrateLegacyBackup(bak);
-  // 检测到任何旧版补丁痕迹（旧名字的标记 / 老版本做法）→ 先从备份还原成干净体再重打
+  // 检测到旧版补丁痕迹 → 先从备份还原成干净体再重打：
+  //   1. 旧名字的标记 / 老版本做法
+  //   2. 自己上一版留下的补丁（有 __ftGate 但没有本版独有符号）
   const looksLegacy =
     BUNDLE_LEGACY.test(src) ||
     BUNDLE_LEGACY_V5.test(src) ||
     src.includes(LEGACY_LOADER) ||
-    LEGACY_BUNDLE_MARKS.some((m) => src.includes(m));
+    LEGACY_BUNDLE_MARKS.some((m) => src.includes(m)) ||
+    (src.includes(BUNDLE_MARKER3) && !src.includes(BUNDLE_CURRENT));
   if (looksLegacy) {
     if (!fs.existsSync(bak)) {
       return {
