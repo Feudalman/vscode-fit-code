@@ -1,5 +1,5 @@
 {
-	"name": "fitcode",
+	"name": "fit-code",
 	"displayName": "FitCode",
 	"description": "%fitcode.description%",
 	"version": "0.1.2",
@@ -8,9 +8,9 @@
 	"icon": "icon.png",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Feudalman/vscode-fitcode.git"
+		"url": "https://github.com/Feudalman/vscode-fit-code.git"
 	},
-	"homepage": "https://feudalman.github.io/vscode-fitcode/",
+	"homepage": "https://feudalman.github.io/vscode-fit-code/",
 	"keywords": [
 		"center",
 		"centered",

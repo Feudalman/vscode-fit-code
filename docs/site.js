@@ -322,7 +322,7 @@
     "install.lede": "Published on the VS Code Marketplace. Run Enable once after installing — all of it reversible.",
     "install.s1t": "Install from the Marketplace",
     "install.s1b":
-      "Search for <code>FitCode</code> in the Extensions view, or open the <a href=\"https://marketplace.visualstudio.com/items?itemName=arui.fitcode\">Marketplace page</a> and hit Install. The command line works too:",
+      "Search for <code>FitCode</code> in the Extensions view, or open the <a href=\"https://marketplace.visualstudio.com/items?itemName=arui.fit-code\">Marketplace page</a> and hit Install. The command line works too:",
     "install.s2t": "Reload, then run Enable",
     "install.s2b":
       "From the Command Palette (<kbd>Cmd/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>) run <code>FitCode: Enable</code> and reload when prompted.",
@@ -337,13 +337,13 @@
     "install.upB":
       "Update the extension from the Marketplace, then run Enable once — an older patch is restored from the backup first, then every patch is applied again.",
     "install.sourceNote":
-      "Prefer running from source? Drop the repo into <code>~/.vscode/extensions/arui.fitcode-&lt;version&gt;/</code>, but uninstall the Marketplace copy first — otherwise both activate and each one patches the install folder.",
+      "Prefer running from source? Drop the repo into <code>~/.vscode/extensions/arui.fit-code-&lt;version&gt;/</code>, but uninstall the Marketplace copy first — otherwise both activate and each one patches the install folder.",
     "install.warnT": 'The first enable may warn that the installation "appears to be corrupt"',
     "agent.title": "Don't feel like doing it by hand? Hand it to an agent",
     "agent.desc":
       "Send the prompt below to an AI that can run commands (Claude Code, Codex, and so on). It installs the extension and applies the patch. All you do afterwards is reload the window.",
     "agent.prompt":
-      "Install the FitCode VS Code extension for me — it makes the editor's text width follow the content.\n\n1. Run: code --install-extension arui.fitcode (that is the Marketplace build; if it fails, clone https://github.com/Feudalman/vscode-fitcode.git and use node test/apply.cjs install to set up a dev copy)\n2. Run: node test/apply.cjs status to see the current patch state (without the repo, use the FitCode: Show status command in VS Code)\n3. To apply the patch, prefer the user running FitCode: Enable inside VS Code; only fall back to node test/apply.cjs enable if that is not possible\n4. Remind me to reload the VS Code window\n\nNotes:\n- enable modifies workbench.desktop.main.js and workbench.html inside the VS Code install folder; both are backed up first and restored verbatim on disable\n- Never keep the Marketplace build and a source copy installed at the same time: both patch the install folder\n- If you cannot find the VS Code install folder, ask me instead of guessing\n- Do not touch any files outside the extension folder and the VS Code install folder",
+      "Install the FitCode VS Code extension for me — it makes the editor's text width follow the content.\n\n1. Run: code --install-extension arui.fit-code (that is the Marketplace build; if it fails, clone https://github.com/Feudalman/vscode-fit-code.git and use node test/apply.cjs install to set up a dev copy)\n2. Run: node test/apply.cjs status to see the current patch state (without the repo, use the FitCode: Show status command in VS Code)\n3. To apply the patch, prefer the user running FitCode: Enable inside VS Code; only fall back to node test/apply.cjs enable if that is not possible\n4. Remind me to reload the VS Code window\n\nNotes:\n- enable modifies workbench.desktop.main.js and workbench.html inside the VS Code install folder; both are backed up first and restored verbatim on disable\n- Never keep the Marketplace build and a source copy installed at the same time: both patch the install folder\n- If you cannot find the VS Code install folder, ask me instead of guessing\n- Do not touch any files outside the extension folder and the VS Code install folder",
 
     "install.warnB":
       "That is the expected result of VS Code's checksum validation (it does not recognise the modified files). Just dismiss it.",
@@ -374,7 +374,7 @@
 
     "footer.license": "MIT licensed · maintained by Feudalman",
     "footer.docs": "Readme",
-    "footer.docsUrl": "https://github.com/Feudalman/vscode-fitcode/blob/main/README.md",
+    "footer.docsUrl": "https://github.com/Feudalman/vscode-fit-code/blob/main/README.md",
     "footer.theme": "Colour theme: dark-arui",
   };
 

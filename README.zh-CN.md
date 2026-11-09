@@ -1,6 +1,6 @@
 # FitCode
 
-[English](README.md) | 简体中文 | [官网](https://feudalman.github.io/vscode-fitcode/)
+[English](README.md) | 简体中文 | [官网](https://feudalman.github.io/vscode-fit-code/)
 
 **避免脖子左拧**
 
@@ -42,7 +42,7 @@
 - `workbench.desktop.main.js`：4 处锚点补丁
 - `workbench.html`：插入内联注入脚本（并把 CSP meta 挪进 base64 注释）
 
-1. 在 [VS Code 扩展市场](https://marketplace.visualstudio.com/items?itemName=arui.fitcode) 安装 **FitCode**——或执行 `code --install-extension arui.fitcode`
+1. 在 [VS Code 扩展市场](https://marketplace.visualstudio.com/items?itemName=arui.fit-code) 安装 **FitCode**——或执行 `code --install-extension arui.fit-code`
 2. 重载窗口后，命令面板执行 **`FitCode: 启用`** → 按提示重载窗口
 3. 完成——打开窄文件会居中，宽文件自动撑满
 
@@ -50,7 +50,7 @@
 **状态**：命令面板执行 **`FitCode: 状态`**。
 **升级**：在市场里更新到新版本后，再执行一次 **`FitCode: 启用`** 即可——检测到旧版补丁会先从备份还原，再按新版重打全部补丁。
 
-想从源码跑？把仓库放进 `~/.vscode/extensions/arui.fitcode-<package.json 里的 version>/`——但要先卸掉市场版，否刚两份会同时激活、各打一遍补丁。
+想从源码跑？把仓库放进 `~/.vscode/extensions/arui.fit-code-<package.json 里的 version>/`——但要先卸掉市场版，否刚两份会同时激活、各打一遍补丁。
 
 ## 设置
 

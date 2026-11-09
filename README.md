@@ -1,6 +1,6 @@
 # FitCode
 
-English | [简体中文](README.zh-CN.md) | [Website](https://feudalman.github.io/vscode-fitcode/)
+English | [简体中文](README.zh-CN.md) | [Website](https://feudalman.github.io/vscode-fit-code/)
 
 **Stop twisting your neck to the left**
 
@@ -41,7 +41,7 @@ The extension modifies two files inside the VS Code install folder (both are bac
 - `workbench.desktop.main.js`: 4 anchored patches
 - `workbench.html`: inserts the inline injection script (and moves the CSP meta into a base64 comment)
 
-1. Install **FitCode** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=arui.fitcode) — or run `code --install-extension arui.fitcode`
+1. Install **FitCode** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=arui.fit-code) — or run `code --install-extension arui.fit-code`
 2. Reload the window, run **`FitCode: Enable`** from the Command Palette, then reload again when prompted
 3. Done — narrow files are centered, wide files fill the panel
 
@@ -49,7 +49,7 @@ The extension modifies two files inside the VS Code install folder (both are bac
 **Status**: run **`FitCode: Show status`**.
 **Upgrade**: update the extension from the Marketplace, then run **`FitCode: Enable`** once — a previously applied patch is restored from the backup first, then every patch is applied again from the new version.
 
-Working from source instead? Drop the repo into `~/.vscode/extensions/arui.fitcode-<version from package.json>/` — but uninstall the Marketplace copy first, or both activate and each one patches the install folder.
+Working from source instead? Drop the repo into `~/.vscode/extensions/arui.fit-code-<version from package.json>/` — but uninstall the Marketplace copy first, or both activate and each one patches the install folder.
 
 ## Settings
 

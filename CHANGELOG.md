@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - 2026-11-09
 
+### Changed
+
+- The extension id is now `arui.fit-code` (was `arui.fitcode`) and the
+  repository moved to `Feudalman/vscode-fit-code`. Command ids and setting
+  keys are unchanged (`fitcode.*`), so existing settings keep working — but
+  the old id has to be uninstalled and the new one installed once.
+
 ### Added
 
 - Word-wrapped files (markdown by default) are handled instead of being skipped.
@@ -26,7 +33,7 @@ Documentation only — the extension code is identical to 0.1.0.
 
 ### Changed
 
-- Install instructions now point at the Marketplace (`arui.fitcode`) instead of
+- Install instructions now point at the Marketplace (`arui.fit-code`) instead of
   asking you to copy the repo into `~/.vscode/extensions/`. Same for upgrading:
   update the extension, then run `FitCode: Enable` once.
 - The website's install section leads with the Marketplace button and the

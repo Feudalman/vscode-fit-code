@@ -31,12 +31,12 @@ E2E 需要先起隔离实例，步骤见 `test/README.md`。没有实例时，�
 改完代码后照这个顺序走，别让用户手动点命令面板：
 
 ```bash
-node test/apply.cjs install     # 同步仓库代码到 ~/.vscode/extensions/arui.fitcode-<version>/（开发副本）
+node test/apply.cjs install     # 同步仓库代码到 ~/.vscode/extensions/arui.fit-code-<version>/（开发副本）
 node test/apply.cjs enable      # 对真实安装打补丁（bundle + workbench.html）
 node test/apply.cjs status      # 查安装态 + 运行时配置
 ```
 
-- **日常用的那份来自扩展市场**（`arui.fitcode`）；`apply.cjs install` 建的是一份开发副本，两者会同时激活、各打一遍补丁。改完代码要真机验证时，先 `code --uninstall-extension arui.fitcode` 卸市场版，验完再删副本装回市场版
+- **日常用的那份来自扩展市场**（`arui.fit-code`）；`apply.cjs install` 建的是一份开发副本，两者会同时激活、各打一遍补丁。改完代码要真机验证时，先 `code --uninstall-extension arui.fit-code` 卸市场版，验完再删副本装回市场版
 - `apply.cjs` 把 `vscode` 模块 stub 掉，直接调 `fitcode.enable/disable/status`；stub 读不到 profile 设置，`activate()` 会把 `fitcode.config.json` 写成默认值——跑完记得按用户 `settings.json` 改回去
 - 干净 bundle 的来源：安装目录里的 `<bundle>.fitcode.bak`（禁用后天然是干净体），或从 `VSCode.app/Contents/Resources/app/out/vs/workbench/` 直接复制
 - 应用/还原后必须让 VSCode **重载窗口**（`open -a` 重启也算）才生效
@@ -46,7 +46,7 @@ node test/apply.cjs status      # 查安装态 + 运行时配置
 
 ## 发布
 
-市场上的 id 是 `arui.fitcode`（`publisher` 必须是 `arui`，不是 `local`）。
+市场上的 id 是 `arui.fit-code`（`publisher` 必须是 `arui`，不是 `local`）。
 
 ```bash
 vsce package                                 # 先打包看清单：不该有 test/、docs/、AGENTS.md
