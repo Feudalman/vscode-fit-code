@@ -61,7 +61,7 @@ Working from source instead? Drop the repo into `~/.vscode/extensions/arui.fitco
 | `fitcode.lineNumbersOnlyAtCursor` | `true` | Show line numbers only on the cursor lines, all of them when there are several cursors | Keeps working |
 | `fitcode.animate` | `true` | Animate the width when switching files or when the content changes | No effect |
 | `fitcode.animateDuration` | `140` | Animation duration (ms), 0 means no animation | No effect |
-| `fitcode.minTextWidth` | `640` | Minimum text width (px); with word wrap on it is also the reading column width | No effect |
+| `fitcode.minTextWidth` | `640` | Minimum text width (px) | No effect |
 | `fitcode.paddingRight` | `20` | Extra padding on the right of the text (px) | No effect |
 | `fitcode.cacheSize` | `300` | How many widths to cache per file | No effect |
 
@@ -89,7 +89,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 
 ## Known limits
 
-- Files with `editor.wordWrap` enabled are centered too: the wrap column shrinks with the inset, so the text wraps inside the centered column and never gets wider than `fitcode.minTextWidth`. Only `wordWrap: "wordWrapColumn"` (a column width you fixed yourself) is left alone.
+- Files with `editor.wordWrap` enabled follow the same rule: whether the text is centered depends only on how wide the content is. When it does not fit, the panel is filled and the lines fold at the panel width (no horizontal scrolling); when it does fit, the text is centered and the fold width shrinks with the inset. Only `wordWrap: "wordWrapColumn"` (a column width you fixed yourself) is left alone.
 - Editor panels narrower than 400 px are not centered (a window shrunk to a small square looks like "not working at all")
 - A VS Code upgrade can break the patch anchors — the extension detects that and refuses to patch (it never damages the install); wait for support for the new version
 - After the first enable, VS Code may warn that the installation "appears to be corrupt" — the expected result of its checksum validation; just dismiss it

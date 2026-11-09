@@ -22,9 +22,12 @@ with open('/tmp/fitcode/ce-mid.txt','w') as f:                          # 99 列
     for i in range(40): f.write(f'line {i}: ' + 'x'*90 + '\n')
 with open('/tmp/fitcode/ce-long.txt','w') as f:                         # 1886 列
     for i in range(220): f.write(f'line {i}: ' + 'y'*1200 + '\n')
+# markdown 默认开启自动换行：短行的一律居中，长行的一律撑满
 para = ('FitCode keeps the text column where the eyes expect it. ' * 9).strip()
-with open('/tmp/fitcode/ce-note.md','w') as f:                          # 自动换行（markdown 默认）
-    f.write('# Ce note\n\n' + ''.join(p + f'  (para {i})\n\n' for i, p in enumerate([para]*12)))
+with open('/tmp/fitcode/ce-note.md','w') as f:                          # 短行（~40 列）
+    f.write('# Ce note\n\n' + ''.join(f'- short line {i}\n' for i in range(40)))
+with open('/tmp/fitcode/ce-note-wide.md','w') as f:                     # 长行（~300 列）
+    f.write('# Ce note wide\n\n' + ''.join(p + f'  (para {i})\n\n' for i, p in enumerate([para]*8)))
 EOF
 ```
 
@@ -70,7 +73,7 @@ json.dump(d, open('/tmp/fitcode/profile/User/globalStorage/storage.json', 'w'))
   --extensionDevelopmentPath=<本仓库路径> \
   --disable-workbench-trust \
   --new-window /tmp/fitcode/ce-short.txt /tmp/fitcode/ce-mid.txt /tmp/fitcode/ce-long.txt \
-  /tmp/fitcode/ce-note.md &
+  /tmp/fitcode/ce-note.md /tmp/fitcode/ce-note-wide.md &
 ```
 
 ## 不开 GUI 应用改动
@@ -88,7 +91,7 @@ node test/apply.cjs disable    # 从备份还原
 ## 运行
 
 ```bash
-node test/e2e.mjs        # 完整 E2E：注入补丁体 + inject + 断言 16 项（需先按上文起实例，不需要任何额外标记文件）
+node test/e2e.mjs        # 完整 E2E：注入补丁体 + inject + 断言 17 项（需先按上文起实例，不需要任何额外标记文件）
 node test/measure.mjs 9337  # 现场诊断：量任意带调试口实例的各层几何
 ```
 
@@ -102,7 +105,8 @@ node test/measure.mjs 9337  # 现场诊断：量任意带调试口实例的各�
 | 短文件（10 列） | 居中：padL == padR > 0；**滚动条右缘距面板右缘 = 0** |
 | 中文件（99 列，放得下） | 居中：padL == padR > 0；滚动条仍钉右缘 |
 | 长文件（1886 列） | 放不下 → 撑满：padL == padR == 0；滚动条仍钉右缘 |
-| markdown（自动换行，内容比面板宽） | 居中：padL == padR > 0；`wrappingColumn` 明显小于面板可用列数；可视行数 > 模型行数（真的折行了）；滚动条仍钉右缘 |
+| markdown 短行（自动换行，放得下） | 居中：padL == padR > 0；`wrappingColumn` 明显小于面板可用列数 |
+| markdown 长行（自动换行，放不下） | 撑满：padL == padR == 0；但仍折行（可视行数 > 模型行数，无横向滚动）；滚动条仍钉右缘 |
 | 分屏：持有长文件的组 | 撑满（padL == 0） |
 | 分屏：持有短文件的组 | 居中，且与另一组内缩量不同（各组独立计算） |
 | 分屏两组 | 各自滚动条钉在自家右缘；minimap 右缘 = `width − verticalScrollbarWidth`（不跟内容左移） |

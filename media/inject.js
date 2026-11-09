@@ -330,11 +330,10 @@
     var vsb = li.verticalScrollbarWidth;
     var cw = charWidth(dom);
     var natural = colsFor(ed.getModel()) * cw + cfg.paddingRight; // 正文自然宽度
-    var minText = Math.max(0, cfg.minTextWidth - gutter); // 最小宽度；自动换行时兼作阅读欄宽
-    // 不换行：放得下就居中，放不下自动撑满 + 横向滚动；
-    // 自动换行：没有“自然宽度”可言（每行都能折），用 minTextWidth 当欄宽，
-    // 内容本身就窄时仍按自身宽度居中，不把一段短文本拉成固定欄
-    var target = wrap === "off" ? Math.max(natural, minText) : Math.min(natural, minText);
+    var minText = Math.max(0, cfg.minTextWidth - gutter); // 最小宽度
+    // 居中与否不看 wordWrap：只看内容多宽。放得下就居中，放不下就撑满；
+    // 自动换行时内容比面板宽也只是“折行”而不会出现横向滚动条（换行列宽由补丁重算）。
+    var target = Math.max(natural, minText);
     return Math.max(0, Math.floor((avail - gutter - mm - vsb - target) / 2));
   }
 

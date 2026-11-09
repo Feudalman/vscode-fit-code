@@ -62,7 +62,7 @@
 | `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标所在行，多光标则每处都显示 | 照常工作 |
 | `fitcode.animate` | `true` | 切文件、改内容时宽度渐变 | 没有效果 |
 | `fitcode.animateDuration` | `140` | 渐变时长（ms），0 表示不渐变 | 没有效果 |
-| `fitcode.minTextWidth` | `640` | 正文最小宽度（px）；开启自动换行时它同时是阅读欄宽 | 没有效果 |
+| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） | 没有效果 |
 | `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） | 没有效果 |
 | `fitcode.cacheSize` | `300` | 每个文件缓存多少条宽度 | 没有效果 |
 
@@ -90,7 +90,7 @@
 
 ## 已知边界
 
-- 开启 `editor.wordWrap` 的文件也居中：换行列宽跟着内缩一起收窄，文字在居中的窄栏里折行，宽度不超过 `fitcode.minTextWidth`。只有 `wordWrap: "wordWrapColumn"`（自己写死列宽）不参与
+- 开启 `editor.wordWrap` 的文件走同一套规则：居不居中只看内容有多宽。放不下就撑满面板、在面板宽度上折行（没有横向滚动）；放得下就居中，且换行列宽跟着内缩一起收窄。只有 `wordWrap: "wordWrapColumn"`（自己写死列宽）不参与
 - 编辑器面板宽度 < 400px 时不居中（窗口被缩成小方块时看起来就是"完全没生效"）
 - VSCode 升级后补丁锚点可能失配——扩展会检测并拒绝打补丁（不会损坏安装），需等适配新版本
 - 首次启用后 VSCode 可能提示"安装似乎损坏"——哈希校验的预期反应，点关闭即可
