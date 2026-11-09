@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-09
+
+Documentation only — the extension code is identical to 0.1.0.
+
+### Changed
+
+- Install instructions now point at the Marketplace (`arui.fitcode`) instead of
+  asking you to copy the repo into `~/.vscode/extensions/`. Same for upgrading:
+  update the extension, then run `FitCode: Enable` once.
+- The website's install section leads with the Marketplace button and the
+  command line equivalent, and notes that a source copy must not be installed
+  side by side with the Marketplace build (both would patch the install folder).
+- The bundled agent prompt installs from the Marketplace first and only falls
+  back to cloning the repo.
+
 ## [0.1.0] - 2026-11-06
 
 First public release.
