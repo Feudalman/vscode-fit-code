@@ -58,6 +58,8 @@ vsce publish                                 # PAT 在登录钥匙串里，vsce 
   所以 `docs/` 可以从包里整个排除，图片照样能显示
 - README 里不能出现 SVG（市场直接拒收），示意图要用 PNG（`docs/layout.png` 由 `docs/layout.svg` 渲染）
 - 发新版本：改 `package.json` 的 `version` + `CHANGELOG.md` + `docs/index.html` 顶部的 `vx.y.z`，再 `vsce publish`
+- **版本号由用户指定，不要自己按 semver 推断**（曾经把 patch 版自作主张写成 minor 的 0.2.0，
+  市场只认最高版本号，删不掉单版本，最后只能整包下架重发）。改动内容再大也先问一句要发哪个号
 
 ## 硬约束
 
