@@ -410,7 +410,8 @@
           </header>
           <ul class="limits">
             <li data-i18n="lim1">
-              开启 <code>editor.wordWrap</code> 的文件不居中——自动换行模式下居中无意义。
+              开启 <code>editor.wordWrap</code> 的文件也居中：换行列宽跟着内缩一起收窄，文字在居中的窄欄里折行，宽度不超过
+              <code>fitcode.minTextWidth</code>；只有 <code>wordWrap: "wordWrapColumn"</code>（自己写死列宽）不参与。
             </li>
             <li data-i18n="lim2">
               编辑器面板窄于 400px 时不居中——窗口被缩成小方块时看起来就是"完全没生效"。

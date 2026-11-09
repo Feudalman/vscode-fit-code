@@ -62,7 +62,7 @@
 | `fitcode.lineNumbersOnlyAtCursor` | `true` | 行号只显示光标所在行，多光标则每处都显示 | 照常工作 |
 | `fitcode.animate` | `true` | 切文件、改内容时宽度渐变 | 没有效果 |
 | `fitcode.animateDuration` | `140` | 渐变时长（ms），0 表示不渐变 | 没有效果 |
-| `fitcode.minTextWidth` | `640` | 正文最小宽度（px） | 没有效果 |
+| `fitcode.minTextWidth` | `640` | 正文最小宽度（px）；开启自动换行时它同时是阅读欄宽 | 没有效果 |
 | `fitcode.paddingRight` | `20` | 正文右侧额外留白（px） | 没有效果 |
 | `fitcode.cacheSize` | `300` | 每个文件缓存多少条宽度 | 没有效果 |
 
@@ -90,7 +90,7 @@
 
 ## 已知边界
 
-- `editor.wordWrap` 开启的文件不居中（自动换行模式下无意义）
+- 开启 `editor.wordWrap` 的文件也居中：换行列宽跟着内缩一起收窄，文字在居中的窄栏里折行，宽度不超过 `fitcode.minTextWidth`。只有 `wordWrap: "wordWrapColumn"`（自己写死列宽）不参与
 - 编辑器面板宽度 < 400px 时不居中（窗口被缩成小方块时看起来就是"完全没生效"）
 - VSCode 升级后补丁锚点可能失配——扩展会检测并拒绝打补丁（不会损坏安装），需等适配新版本
 - 首次启用后 VSCode 可能提示"安装似乎损坏"——哈希校验的预期反应，点关闭即可
@@ -109,7 +109,7 @@
 
 1. `_createConfiguration`：把每个 CodeEditor 实例暴露到 `window.__ftEditors`
 2. `updateOptions`：兜底注册（配置变化等路径）
-3. `computeLayout` 头部：门控（wordWrap=off 且宽度≥400）+ 从 rulers 读取内缩量 `__ftP`；返回值里 glyphMargin/行号/装饰/contentLeft += `__ftP`、contentWidth −= 2×`__ftP`
+3. `computeLayout` 头部：门控（wordWrap ≠ `wordWrapColumn` 且宽度≥400）+ 从 rulers 读取内缩量 `__ftP`；返回值里 glyphMargin/行号/装饰/contentLeft += `__ftP`、contentWidth −= 2×`__ftP`，并按收窄后的宽度重算 `viewportColumn` / `wrappingColumn`（自动换行时文字才会在窄栏里折行）
 4. `EditorScrollbar._setLayout`：滚动条容器**左边不动**（`left = contentLeft`，正文位置就是这个容器的 left，动它会连正文一起挪走）、**宽度加 pad**（`width = contentWidth + pad (+minimapWidth)`），让容器右缘铺到编辑器最右，里面的竖滚动条 / overview ruler 自然贴右
 
 > 为什么需要第 4 处：滚动条是 `contentLeft+contentWidth` 那个容器的子元素，第 3 处补丁把 `contentWidth` 缩小了 `2×pad`，滚动条于是"跟着正文居中"。第 4 处只把容器加宽 `pad`，正文位置不变。

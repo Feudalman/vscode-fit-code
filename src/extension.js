@@ -49,10 +49,12 @@ const BUNDLE_ANCHOR2 =
 // 第三处：门控(__ftGate) + 读本编辑器自己的 rulers（EditorOption 117，inject.js 写入），
 // 返回值里按【本编辑器自己的宽度】独立计算内缩量 __ftP 并应用到
 // glyphMargin/行号/装饰/contentLeft（+__ftP）、contentWidth（-2*__ftP）。minimap 保持原生位置。
+// 自动换行（wordWrap=on/bounded）也居中：换行列宽必须跟着收窄（viewportColumn / wrappingColumn），
+// 否则 pad 只挪了位置，文字还在原宽度上折行。只有 wordWrapColumn（用户写死列宽）不参与。
 const BUNDLE_ANCHOR3 =
   /computeLayout\((\w+),(\w+)\)\{let (\w+)=\2\.outerWidth\|0/;
 const BUNDLE_ANCHOR3R =
-  /\{width:(\w+),height:(\w+),glyphMarginLeft:(\w+),glyphMarginWidth:(\w+),glyphMarginDecorationLaneCount:([\w$.]+),lineNumbersLeft:(\w+),lineNumbersWidth:(\w+),decorationsLeft:(\w+),decorationsWidth:(\w+),contentLeft:(\w+),contentWidth:(\w+),minimap:(\w+)/;
+  /\{width:(\w+),height:(\w+),glyphMarginLeft:(\w+),glyphMarginWidth:(\w+),glyphMarginDecorationLaneCount:([\w$.]+),lineNumbersLeft:(\w+),lineNumbersWidth:(\w+),decorationsLeft:(\w+),decorationsWidth:(\w+),contentLeft:(\w+),contentWidth:(\w+),minimap:(\w+),viewportColumn:(\w+),isWordWrapMinified:(\w+),isViewportWrapping:(\w+),wrappingColumn:(\w+)/;
 const BUNDLE_MARKER3 = "__ftGate";
 // 第四处（滚动条/minimap 钉右）：EditorScrollbar 的容器就是【正文所在的容器】——
 // lines-content、decorationsOverviewRuler、竖滚动条都是它的子元素，正文位置 = 它的 left。
@@ -315,10 +317,17 @@ async function patchBundle(htmlPath) {
     src = src.replace(
       BUNDLE_ANCHOR3,
       "computeLayout($1,$2){" +
-        'var __ftGate=(function(){var w=$1.get(156);w=w==="inherit"?$1.get(155):w;' +
-        'w=w==="inherit"?$1.get(151):w;return w==="off"&&$2.outerWidth>=400})();' +
+        'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
+        '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
+        // wordWrapColumn 是用户写死列宽；其余（off/on/bounded）都参与居中
+        'var __ftGate=(__ftW!=="wordWrapColumn"&&$2.outerWidth>=400);' +
         "var __ftK=$1.get(117)||[];" +
         'var __ftP=(__ftGate&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
+        // 换行列宽：原生 viewportColumn = floor((contentWidth - vsb - 2) / 单字符宽)，这里按收窄后的宽度重算
+        'var __ftCW=$2.typicalHalfwidthCharacterWidth||8;' +
+        'var __ftVS=($1.get(118)||{}).verticalScrollbarSize||14;' +
+        "var __ftVC=function(w){return Math.max(1,Math.floor((Math.max(1,w-2*__ftP)-__ftVS-2)/__ftCW))};" +
+        "var __ftV163=$1.get(163),__ftF=$1.get(154)||0;" +
         "let $3=$2.outerWidth|0",
     );
     const hits3r = src.match(new RegExp(BUNDLE_ANCHOR3R.source, "g")) || [];
@@ -332,7 +341,13 @@ async function patchBundle(htmlPath) {
       "{width:$1,height:$2,glyphMarginLeft:$3+__ftP,glyphMarginWidth:$4,glyphMarginDecorationLaneCount:$5," +
         "lineNumbersLeft:$6+__ftP,lineNumbersWidth:$7,decorationsLeft:$8+__ftP,decorationsWidth:$9," +
         // minimap 不跟内容左移：右侧 UI 全部钉在右边缘，只有正文/行号居中
-        "contentLeft:$10+__ftP,contentWidth:Math.max(1,$11-2*__ftP),minimap:$12",
+        "contentLeft:$10+__ftP,contentWidth:Math.max(1,$11-2*__ftP),minimap:$12," +
+        // 自动换行：换行列宽跟着 contentWidth 一起收窄，文字才会在居中的窄栏里折行；
+        // __ftP=0 时原样返回，保证未内缩场景的语义不变
+        "viewportColumn:(__ftP>0?__ftVC($11):$13),isWordWrapMinified:$14,isViewportWrapping:$15," +
+        "wrappingColumn:(__ftP>0&&$16>0?" +
+        "function(){var c=Math.max(1,__ftVC($11)-(__ftV163?1:0));" +
+        'return __ftW==="bounded"?Math.min(c,__ftF||c):c}():$16)',
     );
     changed = true;
   }
@@ -346,11 +361,11 @@ async function patchBundle(htmlPath) {
     src = src.replace(
       BUNDLE_ANCHOR4,
       "_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);" +
-        // 与补丁3 同一门控：wordWrap=off 且宽度≥400 时才认 rulers 里的内缩量
+        // 与补丁3 同一门控：wordWrap 除了“用户写死列宽”之外都认 rulers 里的内缩量
         'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
         '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
         "var __ftK=$1.get(117)||[];" +
-        'var __ftSb=(__ftW==="off"&&$2.width>=400&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
+        'var __ftSb=(__ftW!=="wordWrapColumn"&&$2.width>=400&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
         // 左边界不动：正文位置 = 容器 left，动它就等于把正文一起挪走（曾经踩过）
         "this.scrollbarDomNode.setLeft($2.contentLeft)," +
         '$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +

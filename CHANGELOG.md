@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Word-wrapped files (markdown by default) are centered too. The renderer uses
+  `fitcode.minTextWidth` as the reading column width when wrapping is on, and
+  the layout patch now recomputes `viewportColumn` / `wrappingColumn` from the
+  narrowed width — without that the inset only moved the text and the lines kept
+  wrapping at the full panel width.
+- `wordWrap: "wordWrapColumn"` (a column width you fixed yourself) still opts out.
+
+### Changed
+
+- `fitcode.minTextWidth` now doubles as the reading column width for wrapped
+  files; its description says so.
+
 ## [0.1.1] - 2026-11-09
 
 Documentation only — the extension code is identical to 0.1.0.

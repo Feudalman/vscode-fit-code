@@ -61,7 +61,7 @@ Working from source instead? Drop the repo into `~/.vscode/extensions/arui.fitco
 | `fitcode.lineNumbersOnlyAtCursor` | `true` | Show line numbers only on the cursor lines, all of them when there are several cursors | Keeps working |
 | `fitcode.animate` | `true` | Animate the width when switching files or when the content changes | No effect |
 | `fitcode.animateDuration` | `140` | Animation duration (ms), 0 means no animation | No effect |
-| `fitcode.minTextWidth` | `640` | Minimum text width (px) | No effect |
+| `fitcode.minTextWidth` | `640` | Minimum text width (px); with word wrap on it is also the reading column width | No effect |
 | `fitcode.paddingRight` | `20` | Extra padding on the right of the text (px) | No effect |
 | `fitcode.cacheSize` | `300` | How many widths to cache per file | No effect |
 
@@ -89,7 +89,7 @@ How it works: the renderer has no access to the settings API, so the extension w
 
 ## Known limits
 
-- Files with `editor.wordWrap` enabled are not centered (centering is meaningless in wrapped mode)
+- Files with `editor.wordWrap` enabled are centered too: the wrap column shrinks with the inset, so the text wraps inside the centered column and never gets wider than `fitcode.minTextWidth`. Only `wordWrap: "wordWrapColumn"` (a column width you fixed yourself) is left alone.
 - Editor panels narrower than 400 px are not centered (a window shrunk to a small square looks like "not working at all")
 - A VS Code upgrade can break the patch anchors — the extension detects that and refuses to patch (it never damages the install); wait for support for the new version
 - After the first enable, VS Code may warn that the installation "appears to be corrupt" — the expected result of its checksum validation; just dismiss it
@@ -108,7 +108,7 @@ Four patches against `workbench.desktop.main.js` (each guarded by a uniqueness a
 
 1. `_createConfiguration`: exposes every `CodeEditor` instance on `window.__ftEditors`
 2. `updateOptions`: fallback registration (config changes and similar paths)
-3. head of `computeLayout`: the gate (wordWrap=off and width ≥ 400) + reading the inset `__ftP` from rulers; in the return value glyphMargin / line numbers / decorations / contentLeft += `__ftP`, contentWidth −= 2×`__ftP`
+3. head of `computeLayout`: the gate (wordWrap ≠ `wordWrapColumn` and width ≥ 400) + reading the inset `__ftP` from rulers; in the return value glyphMargin / line numbers / decorations / contentLeft += `__ftP`, contentWidth −= 2×`__ftP`, and `viewportColumn` / `wrappingColumn` are recomputed from the narrowed width so wrapped text folds inside the centered column
 4. `EditorScrollbar._setLayout`: the scrollbar container's **left never moves** (`left = contentLeft`; the text position *is* this container's left, moving it would move the text too), and its **width gains the pad** (`width = contentWidth + pad (+minimapWidth)`), so the container's right edge reaches the editor's right edge and the vertical scrollbar / overview ruler inside it end up on the right
 
 > Why patch 4 exists: the scrollbar is a child of the `contentLeft + contentWidth` container, and patch 3 shrinks `contentWidth` by `2×pad`, so the scrollbar "follows the text towards the center". Patch 4 only widens the container by `pad`, leaving the text position alone.

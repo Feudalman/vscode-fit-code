@@ -5,7 +5,7 @@
 	"fitcode.command.status.title": "FitCode: 显示状态",
 	"fitcode.config.enabled.description": "FitCode 是否已写入 VSCode 安装目录。由「启用/禁用」命令自动维护，勿手改。",
 	"fitcode.config.center.description": "正文居中。关闭即回归原生布局（1~2 秒内生效，无需重载窗口）。",
-	"fitcode.config.minTextWidth.description": "正文最小宽度（像素）。",
+	"fitcode.config.minTextWidth.description": "正文最小宽度（像素）。开启 editor.wordWrap 时它同时是阅读欄宽：文字在居中的窄欄里折行。",
 	"fitcode.config.paddingRight.description": "正文右侧额外留白（像素）。",
 	"fitcode.config.animate.description": "切换文件/内容变化时宽度渐变。",
 	"fitcode.config.animateDuration.description": "宽度渐变时长（毫秒），0 表示不渐变。",

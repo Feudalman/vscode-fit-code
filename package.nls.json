@@ -5,7 +5,7 @@
 	"fitcode.command.status.title": "FitCode: Show status",
 	"fitcode.config.enabled.description": "Whether FitCode is written into the VS Code install folder. Maintained by the Enable/Disable commands; do not edit by hand.",
 	"fitcode.config.center.description": "Center the text. Turn it off to go back to the native layout (takes effect in 1-2 seconds, no window reload needed).",
-	"fitcode.config.minTextWidth.description": "Minimum text width in pixels.",
+	"fitcode.config.minTextWidth.description": "Minimum text width in pixels. With editor.wordWrap on it also becomes the reading column width: the text wraps inside the centered column.",
 	"fitcode.config.paddingRight.description": "Extra padding on the right of the text, in pixels.",
 	"fitcode.config.animate.description": "Animate the width when switching files or when the content changes.",
 	"fitcode.config.animateDuration.description": "Width animation duration in milliseconds. 0 disables the animation.",

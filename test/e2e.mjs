@@ -168,6 +168,12 @@ const M = `(() => {
       vsb: li.verticalScrollbarWidth,
       mm: li.minimap.renderMinimap !== 0 ? li.minimap.minimapWidth : 0,
       minimapLeft: li.minimap.minimapLeft,
+      // 自动换行：折行列宽（wrappingColumn）是否跟着内缩一起收窄
+      wrapOn: li.isViewportWrapping,
+      wrappingColumn: li.wrappingColumn,
+      viewportColumn: li.viewportColumn,
+      modelLines: model ? model.getLineCount() : 0,
+      viewLines: dom.querySelectorAll(".view-line").length,
       // 滚动条右缘到面板右缘的距离：0 = 钉在最右；≈pad = 跟着正文居中
       scrollbarRightGap: sbr ? Math.round(gb.right - sbr.right) : null };
   });
@@ -310,6 +316,45 @@ if (long && short) {
 // 截图
 const shot = await send("Page.captureScreenshot", { format: "png" });
 writeFileSync(`${ROOT}/e2e-split.png`, Buffer.from(shot.data, "base64"));
+
+// ============ C. 自动换行（markdown 默认 wordWrap=on）============
+// 与 A 的区别：内容本身比面板宽，但开自动换行 → 应该折在居中的窄栏里，而不是撑满
+await clickTab("ce-note");
+await sleep(2500);
+const nt = await evaluate(M, "note");
+const ntEd = nt.find((x) => !x.empty);
+if (ntEd) {
+  const nG = geom(ntEd);
+  check(
+    "C1 自动换行的文件也居中：左右内缩相等且 > 0",
+    nG.padL > 0 && nG.centered,
+    fmt({ ...nG, paneW: ntEd.paneW }),
+  );
+  // 拿单字符宽反推：viewportColumn = floor((contentWidth − vsb − 2) / 单字符宽)
+  const cw = (ntEd.contentWidth - ntEd.vsb - 2) / Math.max(1, ntEd.viewportColumn);
+  const fullCols = Math.floor(
+    (ntEd.width - ntEd.gutter - ntEd.mm - ntEd.vsb - 2) / cw,
+  );
+  check(
+    "C2 折行列宽跟着内缩收窄：wrappingColumn 明显小于面板可用列数",
+    ntEd.wrapOn === true &&
+      ntEd.wrappingColumn > 0 &&
+      ntEd.wrappingColumn <= fullCols - 5,
+    `折行列=${ntEd.wrappingColumn} 面板可用=${fullCols}`,
+  );
+  check(
+    "C3 真的折行了：可视行数 > 模型行数",
+    ntEd.viewLines > ntEd.modelLines,
+    `可视行=${ntEd.viewLines} 模型行=${ntEd.modelLines}`,
+  );
+  check(
+    "C4 自动换行时滚动条仍钉右边缘",
+    Math.abs(ntEd.scrollbarRightGap) <= 1,
+    `距右缘=${ntEd.scrollbarRightGap}px`,
+  );
+  const shot2 = await send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(`${ROOT}/e2e-wrapped.png`, Buffer.from(shot2.data, "base64"));
+}
 
 console.log("\n=== E2E 汇总 ===");
 console.log(
