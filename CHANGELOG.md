@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-19
+
+### Fixed
+
+- Support VS Code 1.147.0 by updating the Monaco editor option IDs used by the
+  layout and renderer patches, including rulers, word wrap, and scrollbar state.
+- Update the `EditorScrollbar._setLayout` anchor so enabling no longer fails
+  with "Anchor 4 matched 0 places" after the VS Code update.
+
 ## [0.1.2] - 2026-11-09
 
 ### Changed
