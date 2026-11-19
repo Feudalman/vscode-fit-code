@@ -46,7 +46,7 @@ const LEGACY_LOADER = "var __ceLoader=document.createElement";
 // 兜底锚点：updateOptions 一定会被调用（配置变化 / 切语言等）
 const BUNDLE_ANCHOR2 =
   /updateOptions\((\w+)\)\{this\._configuration\.updateOptions\(\1\|\|\{\}\)\}/;
-// 第三处：门控(__ftGate) + 读本编辑器自己的 rulers（EditorOption 117，inject.js 写入），
+// 第三处：门控(__ftGate) + 读本编辑器自己的 rulers（EditorOption 118，inject.js 写入），
 // 返回值里按【本编辑器自己的宽度】独立计算内缩量 __ftP 并应用到
 // glyphMargin/行号/装饰/contentLeft（+__ftP）、contentWidth（-2*__ftP）。minimap 保持原生位置。
 // 自动换行（wordWrap=on/bounded）也居中：换行列宽必须跟着收窄（viewportColumn / wrappingColumn），
@@ -61,12 +61,12 @@ const BUNDLE_MARKER3 = "__ftGate";
 // 补丁3 缩小 contentWidth 后，这个容器右边缘左移 pad → 滚动条跟着正文居中。
 // 所以：left 绝对不能动（动它正文会一起左移），只把 width 加 pad，让右边缘铺回编辑器最右。
 const BUNDLE_ANCHOR4 =
-  /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
+  /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(169\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(82\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
 const BUNDLE_MARKER4 = "__ftSb";
 // 本版补丁 3 的独有符号：只要 bundle 里已有 FitCode 补丁（__ftGate）却缺这个，
 // 就是“旧版补丁留在原地”，必须先还原再重打——否则重复执行启用会变成空操作。
 // 改补丁 3/4 的内容时，必须同步改这里。
-const BUNDLE_CURRENT = "__ftVC";
+const BUNDLE_CURRENT = "__ftWI";
 // 渲染层读不到 VSCode 的设置，所以扩展把 fitcode.* 写成 json 放在 bundle 旁边，
 // 渲染层（media/inject.js）定时拉取 → 改设置 1~2 秒内生效，不用重跑「启用」。
 const RUNTIME_CONFIG_FILE = "fitcode.config.json";
@@ -324,17 +324,17 @@ async function patchBundle(htmlPath) {
     src = src.replace(
       BUNDLE_ANCHOR3,
       "computeLayout($1,$2){" +
-        'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
-        '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
+        'var __ftW=$1.get(157);__ftW=__ftW==="inherit"?$1.get(156):__ftW;' +
+        '__ftW=__ftW==="inherit"?$1.get(152):__ftW;' +
         // wordWrapColumn 是用户写死列宽；其余（off/on/bounded）都参与居中
         'var __ftGate=(__ftW!=="wordWrapColumn"&&$2.outerWidth>=400);' +
-        "var __ftK=$1.get(117)||[];" +
+        "var __ftK=$1.get(118)||[];" +
         'var __ftP=(__ftGate&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
         // 换行列宽：原生 viewportColumn = floor((contentWidth - vsb - 2) / 单字符宽)，这里按收窄后的宽度重算
         'var __ftCW=$2.typicalHalfwidthCharacterWidth||8;' +
-        'var __ftVS=($1.get(118)||{}).verticalScrollbarSize||14;' +
+        'var __ftVS=($1.get(119)||{}).verticalScrollbarSize||14;' +
         "var __ftVC=function(w){return Math.max(1,Math.floor((Math.max(1,w-2*__ftP)-__ftVS-2)/__ftCW))};" +
-        "var __ftV163=$1.get(163),__ftF=$1.get(154)||0;" +
+        "var __ftWI=$1.get(164),__ftF=$1.get(155)||0;" +
         "let $3=$2.outerWidth|0",
     );
     const hits3r = src.match(new RegExp(BUNDLE_ANCHOR3R.source, "g")) || [];
@@ -353,7 +353,7 @@ async function patchBundle(htmlPath) {
         // __ftP=0 时原样返回，保证未内缩场景的语义不变
         "viewportColumn:(__ftP>0?__ftVC($11):$13),isWordWrapMinified:$14,isViewportWrapping:$15," +
         "wrappingColumn:(__ftP>0&&$16>0?" +
-        "function(){var c=Math.max(1,__ftVC($11)-(__ftV163?1:0));" +
+        "function(){var c=Math.max(1,__ftVC($11)-(__ftWI?1:0));" +
         'return __ftW==="bounded"?Math.min(c,__ftF||c):c}():$16)',
     );
     changed = true;
@@ -367,15 +367,15 @@ async function patchBundle(htmlPath) {
       };
     src = src.replace(
       BUNDLE_ANCHOR4,
-      "_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);" +
+      "_setLayout(){let $1=this._context.configuration.options,$2=$1.get(169);" +
         // 与补丁3 同一门控：wordWrap 除了“用户写死列宽”之外都认 rulers 里的内缩量
-        'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
-        '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
-        "var __ftK=$1.get(117)||[];" +
+        'var __ftW=$1.get(157);__ftW=__ftW==="inherit"?$1.get(156):__ftW;' +
+        '__ftW=__ftW==="inherit"?$1.get(152):__ftW;' +
+        "var __ftK=$1.get(118)||[];" +
         'var __ftSb=(__ftW!=="wordWrapColumn"&&$2.width>=400&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
         // 左边界不动：正文位置 = 容器 left，动它就等于把正文一起挪走（曾经踩过）
         "this.scrollbarDomNode.setLeft($2.contentLeft)," +
-        '$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +
+        '$1.get(82).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +
         ":this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb)," +
         "this.scrollbarDomNode.setHeight($2.height)}",
     );

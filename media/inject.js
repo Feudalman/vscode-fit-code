@@ -2,7 +2,7 @@
    FitCode —— 渲染层（每编辑器独立自适应居中·rulers 载体）
 
    协议：bundle 补丁的 computeLayout 从【本编辑器自己的 rulers 选项】
-   （EditorOption 117，inject 通过 updateOptions({rulers:[{column:pad,
+   （EditorOption 118，inject 通过 updateOptions({rulers:[{column:pad,
    color:'transparent'}]}) 写入）读取内缩量，应用到
    glyphMargin/行号/装饰/contentLeft（+pad）、contentWidth（-2*pad）。
    rulers 是每编辑器独立的真实 option → 分屏互不干扰；
@@ -306,9 +306,9 @@
   // wordWrap 生效值：与 bundle 补丁同一套解析（override2 → override1 → wordWrap）
   function wordWrapOf(ed) {
     try {
-      var w = ed.getOption(156);
-      if (w === "inherit") w = ed.getOption(155);
-      if (w === "inherit") w = ed.getOption(151);
+      var w = ed.getOption(157);
+      if (w === "inherit") w = ed.getOption(156);
+      if (w === "inherit") w = ed.getOption(152);
       return w || "off";
     } catch (e) {
       return "off";
@@ -350,7 +350,7 @@
   }
   function rulerPad(ed) {
     try {
-      var rr = ed.getOption(117);
+      var rr = ed.getOption(118);
       return rr && rr.length ? rr[0].column || 0 : 0;
     } catch (e) {
       return 0;

@@ -2,7 +2,7 @@
 // 与 src/extension.js 的 patchBundle 保持同一套补丁：
 //   补丁1  _createConfiguration：把每个 CodeEditor 实例放进 window.__ftEditors
 //   补丁2  updateOptions：兜底注册 + window.__ftBundlePatched 标记
-//   补丁3  computeLayout：门控(wordWrap≠wordWrapColumn 且宽度≥400) + 从 rulers(EditorOption 117) 读内缩量 __ftP，
+//   补丁3  computeLayout：门控(wordWrap≠wordWrapColumn 且宽度≥400) + 从 rulers(EditorOption 118) 读内缩量 __ftP，
 //          返回值里 glyphMargin/行号/装饰/contentLeft += __ftP、contentWidth −= 2×__ftP，
 //          并把 viewportColumn / wrappingColumn 按收窄后的宽度重算（自动换行时文字才会在窄栏里折行）；minimap 保持原生
 //   补丁4  EditorScrollbar._setLayout：宿主容器 left 不动（正文位置 = 容器 left）、width += pad，
@@ -68,15 +68,15 @@ const a3h = /computeLayout\((\w+),(\w+)\)\{let (\w+)=\2\.outerWidth\|0/;
   src = src.replace(
     a3h,
     "computeLayout($1,$2){" +
-      'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
-      '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
+      'var __ftW=$1.get(157);__ftW=__ftW==="inherit"?$1.get(156):__ftW;' +
+      '__ftW=__ftW==="inherit"?$1.get(152):__ftW;' +
       'var __ftGate=(__ftW!=="wordWrapColumn"&&$2.outerWidth>=400);' +
-      "var __ftK=$1.get(117)||[];" +
+      "var __ftK=$1.get(118)||[];" +
       'var __ftP=(__ftGate&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
       'var __ftCW=$2.typicalHalfwidthCharacterWidth||8;' +
-      'var __ftVS=($1.get(118)||{}).verticalScrollbarSize||14;' +
+      'var __ftVS=($1.get(119)||{}).verticalScrollbarSize||14;' +
       "var __ftVC=function(w){return Math.max(1,Math.floor((Math.max(1,w-2*__ftP)-__ftVS-2)/__ftCW))};" +
-      "var __ftV163=$1.get(163),__ftF=$1.get(154)||0;" +
+      "var __ftWI=$1.get(164),__ftF=$1.get(155)||0;" +
       "let $3=$2.outerWidth|0",
   );
 }
@@ -99,14 +99,14 @@ const a3r =
       "contentLeft:$10+__ftP,contentWidth:Math.max(1,$11-2*__ftP),minimap:$12," +
       "viewportColumn:(__ftP>0?__ftVC($11):$13),isWordWrapMinified:$14,isViewportWrapping:$15," +
       "wrappingColumn:(__ftP>0&&$16>0?" +
-      "function(){var c=Math.max(1,__ftVC($11)-(__ftV163?1:0));" +
+      "function(){var c=Math.max(1,__ftVC($11)-(__ftWI?1:0));" +
       'return __ftW==="bounded"?Math.min(c,__ftF||c):c}():$16)',
   );
 }
 
 // ---- 补丁 4：EditorScrollbar._setLayout —— 正文容器只加宽，滚动条/overview ruler 贴右 ----
 const a4 =
-  /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(168\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(81\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
+  /_setLayout\(\)\{let (\w+)=this\._context\.configuration\.options,(\w+)=\1\.get\(169\);this\.scrollbarDomNode\.setLeft\(\2\.contentLeft\),\1\.get\(82\)\.side==="right"\?this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\+\2\.minimap\.minimapWidth\):this\.scrollbarDomNode\.setWidth\(\2\.contentWidth\),this\.scrollbarDomNode\.setHeight\(\2\.height\)\}/;
 {
   const n = src.match(new RegExp(a4.source, "g"));
   if (!n || n.length !== 1) {
@@ -115,15 +115,15 @@ const a4 =
   }
   src = src.replace(
     a4,
-    "_setLayout(){let $1=this._context.configuration.options,$2=$1.get(168);" +
+    "_setLayout(){let $1=this._context.configuration.options,$2=$1.get(169);" +
       // 与补丁3 同一门控：wordWrap 除了“用户写死列宽”以外都认 rulers 里的内缩量
-      'var __ftW=$1.get(156);__ftW=__ftW==="inherit"?$1.get(155):__ftW;' +
-      '__ftW=__ftW==="inherit"?$1.get(151):__ftW;' +
-      "var __ftK=$1.get(117)||[];" +
+      'var __ftW=$1.get(157);__ftW=__ftW==="inherit"?$1.get(156):__ftW;' +
+      '__ftW=__ftW==="inherit"?$1.get(152):__ftW;' +
+      "var __ftK=$1.get(118)||[];" +
       'var __ftSb=(__ftW!=="wordWrapColumn"&&$2.width>=400&&__ftK.length&&typeof __ftK[0].column==="number")?__ftK[0].column:0;' +
       // 左边界不动：正文位置 = 容器 left，动它会连正文一起挪走
       "this.scrollbarDomNode.setLeft($2.contentLeft)," +
-      '$1.get(81).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +
+      '$1.get(82).side==="right"?this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb+$2.minimap.minimapWidth)' +
       ":this.scrollbarDomNode.setWidth($2.contentWidth+__ftSb)," +
       "this.scrollbarDomNode.setHeight($2.height)}",
   );

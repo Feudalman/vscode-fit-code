@@ -86,7 +86,7 @@ vsce publish                                 # PAT 在登录钥匙串里，vsce 
 ## 排查"改了没生效"
 
 按顺序看，别跳：窗口/编辑器面板是否 ≥ 400px（< 400px 按设计不居中和）→ `window.__ftLoaded === true` →
-`html` 里有没有残留 CSP meta → 编辑器 `getOption(117)` 的 rulers 是否有 pad →
+`html` 里有没有残留 CSP meta → 编辑器 `getOption(118)` 的 rulers 是否有 pad →
 `.monaco-scrollable-element.editor-scrollable` 的 `left` 与 `width`。
 markdown 这类默认 `wordWrap=on` 的文件现在也会居中，但如果内容比 `minTextWidth` 宽还看不出变化，
 先看 `getLayoutInfo()` 的 `wrappingColumn` 有没有跟着收窄（没缩就是补丁 3 的 `__ftVC` 没生效）。

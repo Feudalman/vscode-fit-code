@@ -2,7 +2,7 @@
 	"name": "fit-code",
 	"displayName": "Fit Code",
 	"description": "%fitcode.description%",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"publisher": "arui",
 	"license": "MIT",
 	"icon": "icon.png",
